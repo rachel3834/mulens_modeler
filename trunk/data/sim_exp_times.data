@@ -1,0 +1,37 @@
+# Simulated using UVOT tool for simulating point source observations:
+# http://www.mssl.ucl.ac.uk/www_astro/uvot/uvot_observing/uvot_tool.html
+#
+# Used RA, Dec of KB140275: RA 17:55:53.89 Dec -28:28:20.70, J2000.0
+# Assuming a K0 source with zero redshift
+# V filter with the range of brightnesses given below
+#
+# m_V (mag)   S/N  Exptime (s)
+18.0  	     7.92   300.0
+17.5  	    11.78   300.0
+17.0  	    17.13   300.0
+16.5  	    24.26   300.0
+16.0  	    33.48   300.0
+15.5  	    45.12   300.0
+15.0  	    59.61   300.0
+14.5  	    77.57   300.0
+14.0  	    99.82   300.0
+13.5  	    127.49  300.0
+13.0  	    162.01  300.0
+
+#
+# Used RA, Dec of KB140275: RA 17:55:53.89 Dec -28:28:20.70, J2000.0
+# Assuming a K0 source with zero redshift
+# w filter with the range of brightnesses given below
+#
+# m_V (mag)   S/N  Exptime (s)
+18.0  	    14.9    300.0
+17.5  	    22.31   300.0
+17.0  	    32.68   300.0
+16.5  	    46.68   300.0
+16.0  	    64.96   300.0
+15.5  	    88.17   300.0
+15.0  	    117.17  300.0
+14.5  	    153.14  300.0
+14.0  	    197.7   300.0
+13.5  	    253.03 300.0
+13.0  	    358.88 300.0

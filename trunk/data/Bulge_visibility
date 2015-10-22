@@ -1,0 +1,60 @@
+Viewing Results
+
+Input equatorial coordinates:
+   [ 269.3917°, -29.2208° ], equinox J2000.0
+Swift
+
+Double-check the latest TOO evaluation criteria
+at the Swift MOC.
+
+ *** VIEWING Version 3.3      run on 2015 Feb  5 ***
+     for the period 2015 Feb 05 to 2017 Feb 05
+
+   For all observations with Swift (Sun angle range =  47.0-180.0):
+                   (and Moon avoidance limit of  23.0 degrees):
+     Observable between 2015 Feb 05           and 2015 Nov 05
+       except between ~2015 Feb 13 10UT and ~2015 Feb 16  8UT (Moon)
+       except between ~2015 Mar 12 17UT and ~2015 Mar 15 18UT (Moon)
+       except between ~2015 Apr 08 23UT and ~2015 Apr 12  1UT (Moon)
+       except between ~2015 May 06  5UT and ~2015 May 09  6UT (Moon)
+       except between ~2015 Jun 02 12UT and ~2015 Jun 05 12UT (Moon)
+       except between ~2015 Jun 29 21UT and ~2015 Jul 02 20UT (Moon)
+       except between ~2015 Jul 27  6UT and ~2015 Jul 30  6UT (Moon)
+       except between ~2015 Aug 23 15UT and ~2015 Aug 26 16UT (Moon)
+       except between ~2015 Sep 19 22UT and ~2015 Sep 23  1UT (Moon)
+       except between ~2015 Oct 17  4UT and ~2015 Oct 20  8UT (Moon)
+     Observable between 2016 Feb 05           and 2016 Nov 04
+       except between ~2016 Feb 05  0UT or before and ~2016 Feb 06 14UT (Moon)
+       except between ~2016 Mar 01 19UT and ~2016 Mar 04 24UT (Moon)
+       except between ~2016 Mar 29  2UT and ~2016 Apr 01  8UT (Moon)
+       except between ~2016 Apr 25  8UT and ~2016 Apr 28 15UT (Moon)
+       except between ~2016 May 22 14UT and ~2016 May 25 21UT (Moon)
+       except between ~2016 Jun 18 21UT and ~2016 Jun 22  3UT (Moon)
+       except between ~2016 Jul 16  4UT and ~2016 Jul 19 10UT (Moon)
+       except between ~2016 Aug 12 13UT and ~2016 Aug 15 19UT (Moon)
+       except between ~2016 Sep 08 21UT and ~2016 Sep 12  4UT (Moon)
+       except between ~2016 Oct 06  4UT and ~2016 Oct 09 13UT (Moon)
+       except between ~2016 Nov 02 10UT and ~2016 Nov 04 24UT or later (Moon)
+
+   For preferred TOO observations with Swift (Sun angle range =  47.0-180.0):
+                   (and RA difference > 8.00 or < 4.00 hours):
+                   (and Moon avoidance limit of  23.0 degrees):
+     Observable between 2015 Feb 05           and 2015 Feb 16
+       except between ~2015 Feb 13 10UT and ~2015 Feb 16  8UT (Moon)
+     Observable between 2015 Apr 22           and 2015 Aug 20
+       except between ~2015 May 06  5UT and ~2015 May 09  6UT (Moon)
+       except between ~2015 Jun 02 12UT and ~2015 Jun 05 12UT (Moon)
+       except between ~2015 Jun 29 21UT and ~2015 Jul 02 20UT (Moon)
+       except between ~2015 Jul 27  6UT and ~2015 Jul 30  6UT (Moon)
+     Observable between 2015 Oct 25           and 2015 Nov 05
+       and is always far enough away from the Moon
+     Observable between 2016 Feb 05           and 2016 Feb 16
+       except between ~2016 Feb 05  0UT or before and ~2016 Feb 06 14UT (Moon)
+     Observable between 2016 Apr 21           and 2016 Aug 20
+       except between ~2016 Apr 25  8UT and ~2016 Apr 28 15UT (Moon)
+       except between ~2016 May 22 14UT and ~2016 May 25 21UT (Moon)
+       except between ~2016 Jun 18 21UT and ~2016 Jun 22  3UT (Moon)
+       except between ~2016 Jul 16  4UT and ~2016 Jul 19 10UT (Moon)
+       except between ~2016 Aug 12 13UT and ~2016 Aug 15 19UT (Moon)
+     Observable between 2016 Oct 24           and 2016 Nov 04
+       except between ~2016 Nov 02 10UT and ~2016 Nov 04 24UT or later (Moon)

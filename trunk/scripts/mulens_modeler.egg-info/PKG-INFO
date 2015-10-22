@@ -1,0 +1,14 @@
+Metadata-Version: 1.1
+Name: mulens-modeler
+Version: 0.1
+Summary: Python utility for modeling and simulating microlensing events
+Home-page: UNKNOWN
+Author: Rachel Street
+Author-email: rstreet@lcogt.net
+License: UNKNOWN
+Description: Python utility for modeling and simulating microlensing events
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
