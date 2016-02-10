@@ -294,6 +294,16 @@ class MicrolensingEvent():
 	self.u_t = np.sqrt( ( dt.value * dt.value ) + ( self.u_o * self.u_o ) )
 	#print self.u_t
 
+    def calc_pspl_curve(self):
+        """Method to compute the magnification of the event for a given set of timestamps.
+	Requires the event instance to be fully configured.
+	"""
+	
+	# Re-calculate the event lightcurve with these timestamps:
+	self.calc_source_lens_rel_motion()
+        self.calc_pspl_impact_param()
+        self.calc_magnification()
+	
     ###############################
     # PSPL WITH PARALLAX DUE TO EARTH'S ORBITAL MOTION
     
