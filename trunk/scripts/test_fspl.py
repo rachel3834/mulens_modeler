@@ -6,10 +6,9 @@ Created on Wed Feb 10 11:39:07 2016
 """
 
 ################################################################################
-#     	      	      	SWIFT MICROLENSING EVENT SIMULATION
+#     	      	      	MICROLENSING EVENT SIMULATION
 # 
-# Program to simulate point-source, point-lens microlensing events as seen
-# simultaneously from Earth and Swift.
+# Program to test the implementation of Finite Source, Point Lens events
 ################################################################################
 
 ###########################
@@ -26,13 +25,13 @@ def generate_fspl():
     
     # Essential parameters of the event
     event = mulens_class.MicrolensingEvent()
-    event.u_o = 0.00005
-    event.rho = 0.001
-    event.t_E = TimeDelta((100.0 * 24.0 * 3600.0),format='sec')	  # Must be in JD or seconds
+    event.u_o = 0.1
+    event.rho = 0.5
+    event.t_E = TimeDelta((10.0 * 24.0 * 3600.0),format='sec')	  # Must be in JD or seconds
     event.M_L = constants.M_sun * 0.3 	    # ~K star
     event.D_L = 6000.0 * constants.pc 	    # ~halfway to the Galactic centre
     event.D_S = 8000.0 * constants.pc 	    # Source in the Bulge
-    event.phi = ( 00.0 * np.pi ) / 180.0 
+    event.phi = ( 0.0 * np.pi ) / 180.0 
     event.calc_D_lens_source()
     event.calc_einstein_radius()
     event.RA = '17:57:34.0'
@@ -57,8 +56,9 @@ def generate_fspl():
     
     # Compute the PSPL lightcurve of this event as seen from a stationary Earth. 
     #event.calc_pspl_impact_param()
-    event.calc_pspl_parallax_impact_param()
+    event.calc_pspl_impact_param()
     event.calc_magnification(model='pspl')
+    event.calc_magnification(model='fspl')
     
     # Diagnostic plot of relative motion in the lens plane:
     event.plot_lens_plane_motion()
@@ -72,17 +72,18 @@ def generate_fspl():
     
     # Plot PSPL event seen from stationary Earth:
     plt.plot(event.t-2450000.0,event.A_t_pspl,'k-',label='PSPL')
-    
-    
+    A_fspl = event.A_t_fspl
+    plt.plot(event.t-2450000.0,A_fspl,'b--',label='FSPL')
     
     
     # Complete lightcurve plot (top panel):
-    dt = 2.0
+    dt = 1.5 * ( event.t_E.value / ( 24.0 * 3600.0 ) )
+    (xmin,xmax,ymin,ymax) = plt.axis()
     xmin = event.t_o.jd - 2450000.0 - dt
     xmax = event.t_o.jd - 2450000.0 + dt
     plt.xlabel('JD-2450000.0', fontsize=18)						   
     plt.ylabel('A(t)', fontsize=18)		
-    plt.axis([xmin,xmax,0.0,4000.0])					   
+    plt.axis([xmin,xmax,ymin,ymax])					   
     plt.legend(loc='upper right',frameon=False) 
     ax.yaxis.grid() #vertical lines
     ax.xaxis.grid() #horizontal lines
