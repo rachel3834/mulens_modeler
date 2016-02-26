@@ -24,6 +24,7 @@ from astropy.time import Time, TimeDelta
 import matplotlib.pyplot as plt
 import copy
 import glob
+import log_utilities
 
 def simulate_grid_models( params ):
     """Function to drive a simulation of a grid of microlensing models
@@ -35,6 +36,9 @@ def simulate_grid_models( params ):
     with datapoints which reflect the photometric precision likely from 
     a 1m telescope on Earth and the Swift satellite.
     """
+    
+    log = log_utilities.start_day_log( params, 'grid_sim' )
+    log.info( 'Starting grid simulation' )
     
     grid = construct_grid( params )
     n_grid = str(len(grid))
@@ -60,41 +64,50 @@ def simulate_grid_models( params ):
                         
         if len(file_list) == 0:
         
-            print 'Computing for grid point parameters (' + str(g+1) + \
-                    ' out of ' + n_grid + '):'
-            print '-> ',event.summary()        
+            log.info( 'Computing for grid point parameters (' + str(g+1) + \
+                    ' out of ' + n_grid + '):' )
+            log.info( '-> ' + event.summary() )
             
             # Compute lens essential parameters
             event.calc_D_lens_source()
+            log.info( '-> calculated the projected separation of lens and source' )
             event.calc_einstein_radius()
+            log.info( '-> computed the Einstein radius' )
             event.gen_event_timeline(cadence=params['cadence'], \
                                         lc_length=params['lc_length'])
+            log.info( '-> generated the event timeline' )
             event.calc_source_lens_rel_motion()
-            print '-> built lensing event object'
+            log.info( '-> built lensing event object' )
             
             # For ease of handling later, a copy of the basic event
             # is taken and will be used to compute the same event
             # as seen from Swift:
             swift_event = copy.copy( event )
-            print '-> copied to Swift event object'
+            log.info( '-> copied to Swift event object' )
             
             # Ground-based observer:        
             # Calculate the model lightcurve and datapoints for an FSPL 
             # event including annual parallax:
             event.calc_proj_observer_pos(parallax=True,satellite=False)
+            log.info( '-> calculated the projected observer position' )
             event.calc_pspl_impact_param()
+            log.info( '-> calculated the PSPL impact parameter' )
             event.calc_magnification(model='fspl')
+            log.info( '-> calculated the magnification as a function of time' )
             event.simulate_data_points(model='fspl', phot_precision='1m')
-            print '-> Simulated ground-based model and data' 
+            log.info( '-> Simulated ground-based model and data' )
             
             # Swift observer: 
             swift_event.swift_t = event.t[0]
             swift_event.calc_proj_observer_pos(parallax=True,satellite=True)
+            log.info( '-> calculated the projected observer position' )
             swift_event.calc_pspl_impact_param()
+            log.info( '-> calculated the PSPL impact parameter' )
             swift_event.calc_magnification(model='fspl')
+            log.info( '-> calculated the magnification as a function of time' )
             swift_event.simulate_data_points(model='fspl', \
                                 phot_precision='swift', window=0.75, interval=1.5)
-            print '-> Simulated Swift model and data'
+            log.info( '-> Simulated Swift model and data' )
             
             # Output data lightcurves:
             file_path = path.join( params['output_path'], \
@@ -111,10 +124,17 @@ def simulate_grid_models( params ):
             file_path = path.join( params['output_path'], \
                             event.root_file_name()+'_swift.model' )
             swift_event.output_model( file_path, model='fspl' )
-            print '-> Completed output'
+            log.info( '-> Completed output' )
         
-        print '\nCompleted simulation'
-        
+        else:
+            log.info( ' XX> Found existing output for grid point parameters:' )
+            log.info( ' XX> ' + event.summary() )
+            log.info( 'Skipping.' )
+            
+    log.info( 'Completed simulation' )
+    
+    log_utilities.end_day_log( log )
+    
 def construct_grid( params ):
     """Function to return a list of gridpoints.  Each list entry consists
     of a list of grid parameters:

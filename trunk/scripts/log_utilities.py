@@ -26,7 +26,7 @@ def start_day_log( config, log_name ):
     ts = Time.now()    
     ts = ts.iso.split()[0]
     
-    log_file = path.join( config['log_directory'], \
+    log_file = path.join( config['output_path'], \
                     config['log_root_name'] + '_' + ts + '.log' )
 
     # Look for previous logs and rollover the date if the latest log

@@ -176,15 +176,30 @@ class MicrolensingEvent():
                        ( u1 * np.sqrt( u1*u1 + 4.0 ) )
             
             return f
-              
+        
+        def calc_pspl_A( u_t ):
+            A_t = ( u_t * u_t + 2 ) \
+                / ( u_t * np.sqrt( u_t * u_t + 4 ) )
+            return A_t
+            
         if model == 'pspl':
-            A_t = ( self.u_t * self.u_t + 2 ) \
-                / ( self.u_t * np.sqrt( self.u_t * self.u_t + 4 ) )
+            A_t = calc_pspl_A( self.u_t ) 
           
         elif model == 'fspl':
+            z = self.u_t/self.rho
+            idx = np.where( z > 10.0 )
+            jdx = np.where( z <= 10.0 )
             n = 500.0
             A_t = np.zeros( [len(self.u_t)] )
-            for i,u in enumerate(self.u_t):
+            
+            # For points in the lightcurve where z > 10.0 and finite source
+            # effects should be neglible, use a PSPL model:
+            A_t[idx] = calc_pspl_A( self.u_t[idx] )
+            
+            # For points in the lightcurve where z <= 10.0, use Lee's
+            # approximation method:
+            for j in jdx[0].tolist():
+                u = self.u_t[j]
                 up = u + self.rho
                 udiff = u - self.rho
                 if u <= self.rho:
@@ -208,10 +223,10 @@ class MicrolensingEvent():
                         term3 = term3 + f
                     term3 = term3 * ( 4.0 / 3.0 )
                       
-                    A_t[i] = factors * ( term1 + term2 + term3 ) 
+                    A_t[j] = factors * ( term1 + term2 + term3 ) 
                     if dbg == True:                    
                         print 'u ('+str(u)+') <= rho ('+str(self.rho)+\
-                        '), A(t) = '+str(A_t[i])
+                        '), A(t) = '+str(A_t[j])
                         print factors, term1, term2, term3
                 else:
                     factors = ( 1.0 / (np.pi*self.rho*self.rho) ) \
@@ -235,10 +250,10 @@ class MicrolensingEvent():
                         term3 = term3 + f
                     term3 = term3 * (4.0/3.0)
                       
-                    A_t[i] = factors * ( term1 + term2 + term3 )
+                    A_t[j] = factors * ( term1 + term2 + term3 )
                     if dbg == True:                    
                         print 'u ('+str(u)+') > rho ('+str(self.rho)+\
-                        ') A(t) = '+str(A_t[i])
+                        ') A(t) = '+str(A_t[j])
         
         if model == 'pspl': self.A_t_pspl = A_t
         elif model == 'fspl': self.A_t_fspl = A_t
