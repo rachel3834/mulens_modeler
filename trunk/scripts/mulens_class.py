@@ -71,8 +71,9 @@ class MicrolensingEvent():
         self.Dec = None
         self.beta = None
         
-        # Source baseline magnitude:
+        # Source baseline magnitude and simulated data points:
         self.mag_base = None
+        self.ts = None
         self.mag = None
         self.merr = None
         
@@ -115,7 +116,29 @@ class MicrolensingEvent():
                                self.swift_orbit_radius**3 ) / ( G * M_earth ) )
         self.omega_swift = 1.0 / self.swift_orbit_period
         self.swift_t = None
-	
+    
+    def summary(self):    
+        """Method to print a summary of parameters"""
+        
+        output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
+                ', u_0=' + str(self.u_o) + ', rho=' + str(self.rho) + \
+                ', mag_base=' + str(self.mag_base) + ', phi=' + \
+                str(self.phi)
+        return output
+    
+    def root_file_name( self ):
+        """Method to return a string summarizing the basic FSPL parameters
+        for use as a root file name"""
+        
+        te = self.t_E.value / ( 60.0 * 60.0 * 24.0 )   
+        te = round( te, 1 )
+        phi = round( self.phi, 3 )
+        mag = round( self.mag_base, 1 )
+        file_name = 'lc_' + str(self.u_o) + '_' + str(te) + \
+                        '_' + str(phi) + '_' + str(mag) +\
+                        '_' + str(self.rho)
+        return file_name
+        
     ###############################
     # CALCULATE MAGNIFICATION
     def calc_magnification(self,model='pspl'):
@@ -159,7 +182,7 @@ class MicrolensingEvent():
                 / ( self.u_t * np.sqrt( self.u_t * self.u_t + 4 ) )
           
         elif model == 'fspl':
-            n = 50.0
+            n = 500.0
             A_t = np.zeros( [len(self.u_t)] )
             for i,u in enumerate(self.u_t):
                 up = u + self.rho
@@ -398,7 +421,7 @@ class MicrolensingEvent():
           	
     ################################
     # EVENT TIMELINE
-    def gen_event_timeline(self,cadence=None):
+    def gen_event_timeline(self,cadence=None,lc_length=None):
         """Method to generate the event timeline, an array of timestamps 
         for datapoints on the event lightcurve, 
         spanning the range t_o +/- (t_E/2).
@@ -408,10 +431,15 @@ class MicrolensingEvent():
 	
     	# Compute the start and end times of the event, note these are in 
         # UTC format:
-    	# Plots extend to +/- 2 * t_E
-        half_t_E = TimeDelta( ( self.t_E.value * 2.0 ), format='sec' )
-        event_start = self.t_o-half_t_E
-        event_end = self.t_o+half_t_E
+        # Plots extend to +/- 2 * t_E by default, or this can be fixed
+        if lc_length == None:        
+            half_lc = TimeDelta( ( self.t_E.value * 2.0 ), format='sec' )
+        else:
+            half_lc = TimeDelta( ( (lc_length*60.0*60.0*24.0) / 2.0 ), 
+                                        format='sec' )
+            
+        event_start = self.t_o-half_lc
+        event_end = self.t_o+half_lc
         if cadence == None:
             t_incr = TimeDelta( ( self.t_E.value / 5000.0 ) , format='sec')
         else:
@@ -505,9 +533,14 @@ class MicrolensingEvent():
 
     ##################################
     # OBSERVATION SIMULATION
-    def simulate_data_points(self,model='pspl', phot_precision='1m'):
+    def simulate_data_points(self,model='pspl', phot_precision='1m', \
+            window=None, interval=None):
         """Method to extract a series of datapoints from the current model
         with a given photometric cadence and precision."""
+        
+        # Exposure time set to 200s for consistency, observing cadence
+        # expected to be 220s:
+        exp_time = 200.0
         
         if model == 'pspl': 
             A_t = self.A_t_pspl
@@ -518,20 +551,47 @@ class MicrolensingEvent():
         if model == 'pspl_parallax_satelite': 
             A_t = self.A_t_pspl_parallax_satellite
         
-        for A in A_t:
-            mag = self.mag_base + A
-            merr = self.sim_mag_error( mag, phot_precision )
+        if window != None:
+            window = window / 24.0
+            interval = interval / 24.0
+        
+        n_data = len( self.t ) - 1
+        obs_start = self.t[0]
+        if window != None:
+            obs_end = obs_start + window
+        else:
+            obs_end = self.t[-1]
+                    
+        ts = []
+        mag = []
+        merr = []
+        for i in range( 0, n_data, 1 ):
+            t = self.t[i]
+            if t >= obs_start and t <= obs_end:
+                ts.append( t )
+                mag_mean = self.mag_base - 2.5 * np.log10( A_t[i] ) 
+                merr_est = self.sim_mag_error( exp_time, mag_mean, phot_precision ) 
+                mag.append( np.random.normal( mag_mean, merr_est/2.0 ) )
+                merr.append( self.sim_mag_error( exp_time, mag[-1], phot_precision ) )
+                
+                    
+            if t >= obs_end:
+                if window != None:
+                    obs_start = obs_end + interval
+                    obs_end = obs_start + window
+        
+        self.ts = np.array( ts )
         self.mag = np.array( mag )
         self.merr = np.array( merr )
-
-    def sim_mag_error( self, mag, precision_model='1m'):
+        
+    def sim_mag_error( self, exp_time, mag, precision_model='1m', debug=False):
         """Method to approximate the photometric precision possible
         for a given telescope"""
         
         # Select simulation parameters depending on the class
         # of telescope selected:
         if precision_model == '1m':
-            ZP = 23.0
+            ZP = 25.0
             G = 2.0
             aperradius = 8.0
             RDN = 2.5
@@ -543,31 +603,42 @@ class MicrolensingEvent():
             scintillation_noise = True
         elif precision_model == 'swift':
             exptime = 200.0
-            ZP = 19.0
+            ZP = 23.0
             G = 1.0
-            aperradius = 8.0
+            aperradius = 5.0
             RDN = 0.0
-            skybkgd = 50.0
+            skybkgd = 5.0
             teldiam = 0.3
             scintillation_noise = False
         height_o = 8000.0
         
         flux = ( 10**( ( mag - ZP ) / -2.5 ) ) * G
         logfactor = 2.5 * (1.0 / flux) * np.log10(np.exp(1.0))
+        if debug == True and precision_model == 'swift': 
+            print flux, mag
         npix_aper = np.pi*aperradius*aperradius
         sig_Read = np.sqrt(RDN*RDN*npix_aper)*logfactor
         var_Read = sig_Read*sig_Read
         invvar = 1.0/var_Read
         readnoise = 1.0/np.sqrt( invvar )
+        if debug == True and precision_model == 'swift': 
+            print 'read: ',sig_Read, var_Read, invvar, readnoise
         var_Sky = skybkgd * G * npix_aper
         sig_Sky = np.sqrt(var_Sky)*logfactor
         var_Sky = sig_Sky*sig_Sky
         invvar = 1.0/var_Sky
         skynoise = 1.0/np.sqrt( invvar )
+        if debug == True and precision_model == 'swift': 
+            print 'sky: ',sig_Sky, var_Sky, invvar, skynoise
+            
         sig_Star = np.sqrt(flux)*logfactor
         var_Star = sig_Star * sig_Star
         invvar = 1.0/var_Star
         starnoise = 1.0/np.sqrt( invvar )
+        
+        if debug == True and precision_model == 'swift': 
+            print 'star: ', sig_Star, var_Star, invvar, starnoise
+            
         if scintillation_noise == True:
             sig_Scint = 0.09 * ( (teldiam*100.0)**-0.67) * \
                             (airmass**1.5) * np.exp(-telheight/height_o) * \
@@ -581,8 +652,48 @@ class MicrolensingEvent():
         if scintillation_noise == True:
             err_sum = err_sum + (scintnoise*scintnoise)
         merr = np.sqrt( err_sum )
-        
+
+        if debug == True and precision_model == 'swift': 
+            print 'Noise: ',readnoise, skynoise, starnoise, merr
+            #if merr > 10.0:
+             #   exit()
+            
         return merr
+    
+    ##################################
+    # FILE OUTPUT 
+    def output_data( self, file_name ):
+        """Function to output a lightcurve file containing the data
+        from the current model"""
+        
+        fileobj = open( file_name, 'w' )
+        fileobj.write( '# JD       mag         merr\n')
+        n_data = len( self.mag ) - 1
+        for i in range(0,n_data,1):
+            fileobj.write( str(self.ts[i]) + '  ' + str(self.mag[i]) + \
+                     '  ' + str(self.merr[i]) + '\n' )
+        fileobj.close()
+    
+    def output_model( self, file_name, model='pspl' ):
+        """Function to output a lightcurve file containing the data
+        from the current model"""
+        
+        if model == 'pspl': 
+            A_t = self.A_t_pspl
+        if model == 'fspl': 
+            A_t = self.A_t_fspl
+        if model == 'pspl_parallax': 
+            A_t = self.A_t_pspl_parallax
+        if model == 'pspl_parallax_satelite': 
+            A_t = self.A_t_pspl_parallax_satellite
+        
+        fileobj = open( file_name, 'w' )
+        fileobj.write( '# JD       mag\n')
+        n_data = len( A_t ) - 1
+        for i in range(0,n_data,1):
+            mag = self.mag_base - 2.5 * np.log10( A_t[i] )
+            fileobj.write( str(self.t[i]) + '  ' + str(mag) + '\n' )
+        fileobj.close()
         
     ##################################
     # PLOT LENS PLANE MOTION
@@ -632,3 +743,5 @@ class MicrolensingEvent():
     
         plt.savefig('lens_plane_motion.png')
         plt.close(2)
+
+        

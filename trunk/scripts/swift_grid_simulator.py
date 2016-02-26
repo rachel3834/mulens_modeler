@@ -23,6 +23,7 @@ from astropy import coordinates
 from astropy.time import Time, TimeDelta
 import matplotlib.pyplot as plt
 import copy
+import glob
 
 def simulate_grid_models( params ):
     """Function to drive a simulation of a grid of microlensing models
@@ -36,8 +37,9 @@ def simulate_grid_models( params ):
     """
     
     grid = construct_grid( params )
+    n_grid = str(len(grid))
 
-    for grid_point in grid:                    
+    for g, grid_point in enumerate(grid):                    
         event = mulens_class.MicrolensingEvent()
         event.u_o = grid_point[0]
         event.t_E = TimeDelta((grid_point[1] * 24.0 * 3600.0),format='sec')
@@ -52,35 +54,67 @@ def simulate_grid_models( params ):
         event.t_o = Time('2015-01-04T16:00:00', format='isot', scale='utc')
         event.t_p = Time('2015-01-04T06:37:00', format='isot', scale='utc')
         
-        # Compute lens essential parameters
-        event.calc_D_lens_source()
-        event.calc_einstein_radius()
-        event.gen_event_timeline(cadence=params['cadence'])
-        event.calc_source_lens_rel_motion()
+        # Check for pre-existing output and skip if found:
+        file_list = glob.glob( path.join( params['output_path'], \
+                        event.root_file_name()+'*' ) )
+                        
+        if len(file_list) == 0:
         
-        # For ease of handling later, a copy of the basic event
-        # is taken and will be used to compute the same event
-        # as seen from Swift:
-        swift_event = copy.copy( event )
+            print 'Computing for grid point parameters (' + str(g+1) + \
+                    ' out of ' + n_grid + '):'
+            print '-> ',event.summary()        
+            
+            # Compute lens essential parameters
+            event.calc_D_lens_source()
+            event.calc_einstein_radius()
+            event.gen_event_timeline(cadence=params['cadence'], \
+                                        lc_length=params['lc_length'])
+            event.calc_source_lens_rel_motion()
+            print '-> built lensing event object'
+            
+            # For ease of handling later, a copy of the basic event
+            # is taken and will be used to compute the same event
+            # as seen from Swift:
+            swift_event = copy.copy( event )
+            print '-> copied to Swift event object'
+            
+            # Ground-based observer:        
+            # Calculate the model lightcurve and datapoints for an FSPL 
+            # event including annual parallax:
+            event.calc_proj_observer_pos(parallax=True,satellite=False)
+            event.calc_pspl_impact_param()
+            event.calc_magnification(model='fspl')
+            event.simulate_data_points(model='fspl', phot_precision='1m')
+            print '-> Simulated ground-based model and data' 
+            
+            # Swift observer: 
+            swift_event.swift_t = event.t[0]
+            swift_event.calc_proj_observer_pos(parallax=True,satellite=True)
+            swift_event.calc_pspl_impact_param()
+            swift_event.calc_magnification(model='fspl')
+            swift_event.simulate_data_points(model='fspl', \
+                                phot_precision='swift', window=0.75, interval=1.5)
+            print '-> Simulated Swift model and data'
+            
+            # Output data lightcurves:
+            file_path = path.join( params['output_path'], \
+                            event.root_file_name()+'_earth.dat' )
+            event.output_data( file_path )
+            file_path = path.join( params['output_path'], \
+                            event.root_file_name()+'_swift.dat' )
+            swift_event.output_data( file_path )
+            
+            # Output model lightcurves:
+            file_path = path.join(params['output_path'], \
+                            event.root_file_name()+'_earth.model' )
+            event.output_model( file_path, model='fspl' )
+            file_path = path.join( params['output_path'], \
+                            event.root_file_name()+'_swift.model' )
+            swift_event.output_model( file_path, model='fspl' )
+            print '-> Completed output'
         
-        # Ground-based observer:        
-        # Calculate the model lightcurve for an FSPL event including
-        # annual parallax:
-        event.calc_proj_observer_pos(parallax=True,satellite=False)
-        event.calc_pspl_impact_param()
-        event.calc_magnification(model='fspl')
-        event.simulate_data_points(model='fspl', phot_precision='1m')
+        print '\nCompleted simulation'
         
-        # Swift observer:
-        swift_event.calc_proj_observer_pos(parallax=True,satellite=True)
-        swift_event.calc_pspl_impact_param()
-        swift_event.calc_magnification(model='fspl')
-        swift_event.simulate_data_points(model='pspl_parallax_satellite', \
-                            phot_precision='swift')
-        
-        # Calculate delta chi2:
-        
-
 def construct_grid( params ):
     """Function to return a list of gridpoints.  Each list entry consists
     of a list of grid parameters:
@@ -112,6 +146,7 @@ def parse_input_file( file_path ):
         v_range   min  max  incr    [mag]
         rho_range min  max  incr    [units of RE]
         cadence   float             [mins]
+        lc_length float             [days]
         lens_mass float             [Msol]
         lens_distance float         [pc]
         source_distance float       [pc]
@@ -133,7 +168,10 @@ def parse_input_file( file_path ):
             incr = float( entries[3] )
             value = [ rmin, rmax, incr ]
         else:
-            value = float( entries[1] )
+            try:
+                value = float( entries[1] )
+            except ValueError:
+                value = str( entries[1] )
         params[ key ] = value
     return params
 

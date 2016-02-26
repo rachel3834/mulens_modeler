@@ -1,9 +1,11 @@
-u0_range  0.0001    0.1   0.005
-te_range  1.0 	    100.0 20.0
+u0_range  0.0001    0.0002   0.01
+te_range  81.0 	    100.0 20.0
 phi_range 0.0 	    90.0  45.0
-v_range   12.0	    19.0  1.0
-rho_range 0.001     0.1   0.1
-cadence   5.0
+v_range   13.0	    14.0  1.0
+rho_range 0.011     0.02   0.05
+cadence   15.0
+lc_length 300.0
 lens_mass 0.3
 lens_distance 4000.0
 source_distance 8000.0
+output_path /home/rstreet/RoboNet/2015/SpitzerEvents/OGLE-2015-BLG-1319
