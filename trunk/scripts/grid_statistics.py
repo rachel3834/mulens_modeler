@@ -141,7 +141,7 @@ def diff_lcs( lc1, lc2, debug=False ):
     if debug == True:
         print 'Weighted diff = ', diff
     
-    chi2 = ( diff * diff ).sum()
+    chi2 = ( ( diff * diff ).sum() ) / len(idx)
     if debug == True:
         print 'Chi2 = ', chi2
     
