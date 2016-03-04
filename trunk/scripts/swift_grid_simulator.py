@@ -90,7 +90,7 @@ def simulate_grid_models( params ):
             # event including annual parallax:
             event.calc_proj_observer_pos(parallax=True,satellite=False)
             log.info( '-> calculated the projected observer position' )
-            event.calc_pspl_impact_param()
+            event.calc_pspl_parallax_impact_param()
             log.info( '-> calculated the PSPL impact parameter' )
             event.calc_magnification(model='fspl')
             log.info( '-> calculated the magnification as a function of time' )
@@ -101,7 +101,7 @@ def simulate_grid_models( params ):
             swift_event.swift_t = event.t[0]
             swift_event.calc_proj_observer_pos(parallax=True,satellite=True)
             log.info( '-> calculated the projected observer position' )
-            swift_event.calc_pspl_impact_param()
+            swift_event.calc_pspl_parallax_impact_param()
             log.info( '-> calculated the PSPL impact parameter' )
             swift_event.calc_magnification(model='fspl')
             log.info( '-> calculated the magnification as a function of time' )

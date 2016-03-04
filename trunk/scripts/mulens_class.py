@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from astropy import constants, coordinates, units
 from astropy.time import Time, TimeDelta
 from pyslalib import slalib
+import timesubs
+import utilities
 
 ##########################
 # PHYSICAL AND CALCULATED CONSTANTS
@@ -71,9 +73,11 @@ class MicrolensingEvent():
         self.Dec = None
         self.beta = None
         
-        # Source baseline magnitude and simulated data points:
+        # Source baseline magnitude and simulated data points. 
+        # Timestamps are by default in HJD, JD recording for testing
         self.mag_base = None
         self.ts = None
+        self.ts_jd = None
         self.mag = None
         self.merr = None
         
@@ -84,7 +88,9 @@ class MicrolensingEvent():
         self.A_t_pspl = None
         self.A_t_fspl = None
         self.A_t_pspl_parallax = None
+        self.A_t_fspl_parallax = None
         self.A_t_pspl_parallax_satellite = None
+        self.A_t_fspl_parallax_satellite = None
             
         # Parameterization of Earth's orbit around the Sun:
         # t_p = time of perihelion
@@ -182,10 +188,10 @@ class MicrolensingEvent():
                 / ( u_t * np.sqrt( u_t * u_t + 4 ) )
             return A_t
             
-        if model == 'pspl':
+        if 'pspl' in model:
             A_t = calc_pspl_A( self.u_t ) 
           
-        elif model == 'fspl':
+        elif 'fspl' in model:
             z = self.u_t/self.rho
             idx = np.where( z > 10.0 )
             jdx = np.where( z <= 10.0 )
@@ -258,8 +264,11 @@ class MicrolensingEvent():
         if model == 'pspl': self.A_t_pspl = A_t
         elif model == 'fspl': self.A_t_fspl = A_t
         elif model == 'pspl_parallax': self.A_t_pspl_parallax = A_t
+        elif model == 'fspl_parallax': self.A_t_fspl_parallax = A_t
         elif model == 'pspl_parallax_satellite': 
             self.A_t_pspl_parallax_satellite = A_t
+        elif model == 'fspl_parallax_satellite': 
+            self.A_t_fspl_parallax_satellite = A_t
             	
     ###############################
     # CALCULATE EINSTEIN RADIUS
@@ -436,7 +445,7 @@ class MicrolensingEvent():
           	
     ################################
     # EVENT TIMELINE
-    def gen_event_timeline(self,cadence=None,lc_length=None):
+    def gen_event_timeline(self,cadence=None,lc_length=None, debug=False):
         """Method to generate the event timeline, an array of timestamps 
         for datapoints on the event lightcurve, 
         spanning the range t_o +/- (t_E/2).
@@ -444,7 +453,7 @@ class MicrolensingEvent():
             cadence float [mins]
         """
 	
-    	# Compute the start and end times of the event, note these are in 
+        # Compute the start and end times of the event, note these are in 
         # UTC format:
         # Plots extend to +/- 2 * t_E by default, or this can be fixed
         if lc_length == None:        
@@ -460,14 +469,56 @@ class MicrolensingEvent():
         else:
             t_incr = TimeDelta( ( cadence * 60.0 ), format='sec')
     	
-    	# Generate an array of incremental timestamps throughout the event 
+        # Convert coordinates for future use:
+        (ra_rads, dec_rads) = utilities.sex2rads(self.RA, self.Dec)
+        target_position = slalib.sla_dcs2c( ra_rads, dec_rads )
+        
+        # Generate an array of incremental timestamps throughout the event 
         # in JD:
         ts = []
+        jd = []
         t = event_start
         while t <= event_end:
             t = t + t_incr
-            ts.append(t.jd)
-            self.t = np.array(ts)
+            jd.append( t.jd )
+            if debug == True:
+                print 'TIME JD: ',t, t.jd
+                
+            # Calculate the MJD (UTC) timestamp:
+            mjd_utc = t.jd - 2400000.5
+            if debug == True:
+                print 'TIME MJD_UTC: ',mjd_utc
+            
+            # Correct the MJD to TT:
+            mjd_tt = timesubs.mjd_utc2mjd_tt(mjd_utc)
+            if debug == True:
+                print 'TIME MJD_TT: ',mjd_tt, t.tt.jd
+            
+            # Calculate Earth's position and velocity, both heliocentric
+            # and barycentric for this date
+            (earth_helio_position, vh, pb, vb) = slalib.sla_epv( mjd_tt )
+            if debug == True:
+                print 'Earth Cartesian position: ',earth_helio_position
+                print 'Target cartesian position: ', target_position
+            
+            # Calculate the light travel time delay from the target to 
+            # the Sun:
+            dv = slalib.sla_dvdv( earth_helio_position, target_position )            
+            tcorr = dv * ( constants.au.value / constants.c.value )
+            
+            if debug == True:
+                print 'TIME tcorr: ', tcorr, 's', (tcorr/60.0),'mins'
+            
+            # Calculating the HJD:
+            hjd = mjd_tt + tcorr/86400.0 + 2400000.5
+            if debug == True:
+                print 'TIME HJD: ',hjd,'\n'
+    
+            ts.append(hjd)
+        
+        self.t = np.array(ts)
+        self.ts_jd = np.array(jd)
+        
     	
     def calc_pspl_impact_param(self):
         """Method to plot (and calculate if necessary) the point-source, 
@@ -727,11 +778,11 @@ class MicrolensingEvent():
         fig = plt.figure(2,(10,12)) 
         ax = fig.add_axes([0.1, 0.3, 0.85, 0.65])   #  [left, bottom, width, height]
 	
-    	# Plot the trajectory of the lens relative to the Sun-source 
+    	  # Plot the trajectory of the lens relative to the Sun-source 
         # line during the event:
         plt.plot(self.x_lens,self.y_lens,'r-')
 	
-    	# Plot the trajectory of the observer in the lens plane during 
+         # Plot the trajectory of the observer in the lens plane during 
         # the event:
         plt.plot(self.x_obs,self.y_obs,'b-')
 	
@@ -759,4 +810,94 @@ class MicrolensingEvent():
         plt.savefig('lens_plane_motion.png')
         plt.close(2)
 
+    def plot_lightcurve(self, plot_file, model_list=['pspl']):
+        """Method to plot a lightcurve of the event"""
         
+            
+        # Set up figure:				   
+        fig = plt.figure(2,(10,12)) 
+        ax = fig.add_axes([0.1, 0.3, 0.85, 0.65])   #  [left, bottom, width, height]
+        
+        plt_style = { 'pspl': 'r-', 'fspl': 'b-', \
+                        'pspl_parallax': 'm-', 'pspl_parallax_satelite': 'k-' }        
+        
+        # Plot the list of models
+        for model in model_list:
+            mag = self.get_mag_lc( self, model )
+            plt.plot( self.t, mag, plt_style[model] )
+        
+        
+        plt.xlabel('HJD-2450000.0', fontsize=18) 				     
+        plt.ylabel('Mag', fontsize=18) 
+        ax.yaxis.grid() #vertical lines
+        ax.xaxis.grid() #horizontal lines		    
+    
+        plt.savefig(plot_file)
+        plt.close(2)
+    
+    def get_mag_lc( self, model ):
+
+        ZP = 25.0
+        available_models = ['pspl', 'pspl_parallax', 'pspl_parallax_satelite', \
+                            'fspl', 'fspl_parallax', 'fspl_parallax_satelite']
+        if model not in available_models:
+            print 'Error: Unrecognised model requested ' + model
+            print 'Need one of ', available_models
+            exit()
+        
+        A_t = getattr(self, 'A_t_'+model)
+        
+        if A_t == None:
+            print 'Error: magnification for ' + model + ' not yet calculated'
+            exit()
+            
+        mag = ZP - 2.5 * np.log10( A_t )
+        
+        return mag
+        
+    def plot_diff_models(self, plot_file, model_list=['pspl']):
+        """Method to plot lightcurve of the event including different effects, 
+        and to plot a panel differencing the models"""
+        
+        legend_text = '$u_{O}$='+str(self.u_o)	
+        plt_style = { 'pspl': 'r-', 'fspl': 'b--', \
+                        'pspl_parallax': 'm-', 'pspl_parallax_satelite': 'k-', \
+                        'fspl_parallax': 'm--', 'fspl_parallax_satelite': 'k--'}
+                        
+        fig = plt.figure(1,(12,12)) 
+    
+        # Top panel						   
+        ax = fig.add_axes([0.15, 0.5, 0.775, 0.45])   #  [left, bottom, width, height]	   
+    
+        # Plot PSPL event seen from stationary Earth:
+        lc_mag = {}
+        for model in model_list:
+            lc_mag[model] = self.get_mag_lc( model )
+            plt.plot(self.t-2450000.0,lc_mag[model],plt_style[model],label=model)
+            
+        dt = 2.0
+        (xmin,xmax,ymin,ymax) = plt.axis()
+        #xmin = self.t_o.jd - 2450000.0
+        #xmax = self.t_o.jd - 2450000.0
+        plt.xlabel('HJD-2450000.0', fontsize=18)						   
+        plt.ylabel('Mag', fontsize=18)		
+        plt.axis([xmin,xmax,ymax,ymin])
+        plt.legend(loc='upper right',frameon=False) 
+        ax.yaxis.grid() #vertical lines
+        ax.xaxis.grid() #horizontal lines
+        
+        # Add plot of residuals:			   
+        ax = fig.add_axes([0.15, 0.125, 0.775, 0.3])   #  [left, bottom, width, height]
+        diff = lc_mag[model_list[0]] - lc_mag[model_list[1]]
+        label = model_list[0]+' - '+model_list[1]
+        plt.plot(self.t-2450000.0,diff,'r-',label=label)					   
+        plt.ylabel(label, fontsize=18)	
+        
+        # Complete second plot and save to file:
+        (xmin,xmax,ymin,ymax) = plt.axis()
+        plt.axis([xmin,xmax,ymax,ymin])	
+        plt.xlabel('HJD-2450000.0', fontsize=18)				   
+        plt.legend(loc='upper right',frameon=False) 					   
+        ax.yaxis.grid() #vertical lines
+        ax.xaxis.grid() #horizontal lines						   
+        plt.savefig(plot_file)
