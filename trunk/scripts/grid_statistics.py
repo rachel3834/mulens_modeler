@@ -25,6 +25,8 @@ class GridPoint:
         self.rho = None
         self.mag_base = None
         self.chi2 = None
+        self.red_chi2 = None
+        self.n_pts = None
 
     def set_par_from_file( self, file_name ):
         """Method to set the parameters of the grid point from the filename
@@ -42,7 +44,8 @@ class GridPoint:
         
         line = str( self.u0 ) + ' ' + str( self.te ) + ' ' + str( self.phi ) + \
                 str( self.mag_base ) + ' ' + str( self.rho ) + ' ' + \
-                str( self.chi2 )
+                str( self.chi2 ) + ' ' + str( self.red_chi2 ) + ' ' + \
+                str( self.n_pts )
         return line
         
 def grid_locale_stats( grid_dir ):
@@ -73,7 +76,7 @@ def grid_locale_stats( grid_dir ):
         earth_data = read_lc_file( earth_lc_file )
         swift_data = read_lc_file( swift_lc_file )
         
-        gp.chi2 = diff_lcs( earth_data, swift_data )
+        ( gp.chi2, gp.red_chi2, gp.n_pts ) = diff_lcs( earth_data, swift_data )
         
         print gp.summary()
         output.write( gp.summary() + '\n' )
@@ -141,11 +144,12 @@ def diff_lcs( lc1, lc2, debug=False ):
     if debug == True:
         print 'Weighted diff = ', diff
     
-    chi2 = ( ( diff * diff ).sum() ) / len(idx)
+    chi2 = ( ( diff * diff ).sum() )
+    red_chi2 = chi2 / len(idx)
     if debug == True:
         print 'Chi2 = ', chi2
     
-    return chi2
+    return chi2, red_chi2, len(idx)
     
     
 ##############################################################################
