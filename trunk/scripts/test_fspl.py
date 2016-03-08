@@ -19,26 +19,27 @@ from astropy import constants
 from astropy import coordinates
 from astropy.time import Time, TimeDelta
 import matplotlib.pyplot as plt
+from sys import exit, argv
 
 def generate_fspl():
     """Function to generate a test case of an FSPL event lightcurve"""
     
     # Essential parameters of the event
     event = mulens_class.MicrolensingEvent()
-    event.u_o = 0.1
-    event.rho = 0.5
-    event.t_E = TimeDelta((10.0 * 24.0 * 3600.0),format='sec')	  # Must be in JD or seconds
+    event.u_min = 0.0001
+    event.rho = 0.001
+    event.t_E = TimeDelta((1.0 * 24.0 * 3600.0),format='sec')	  # Must be in JD or seconds
     event.M_L = constants.M_sun * 0.3 	    # ~K star
     event.D_L = 6000.0 * constants.pc 	    # ~halfway to the Galactic centre
     event.D_S = 8000.0 * constants.pc 	    # Source in the Bulge
-    event.phi = ( 0.0 * np.pi ) / 180.0 
+    event.phi = ( 90.0 * np.pi ) / 180.0 
     event.calc_D_lens_source()
     event.calc_einstein_radius()
     event.RA = '17:57:34.0'
     event.Dec = '-29:13:15.0'
-    event.t_o = Time('2015-01-04T16:00:00', format='isot', scale='utc')
-    event.t_p = Time('2015-01-04T06:37:00', format='isot', scale='utc')
-    
+    event.t_o = Time('2015-06-01T16:00:00', format='isot', scale='utc')
+    event.t_p = Time('2015-06-01T06:37:00', format='isot', scale='utc')
+    event.mag_base = 13.0
     
     # Generate the event timeline = timestamp array for the lightcurve:
     event.gen_event_timeline()
@@ -56,9 +57,16 @@ def generate_fspl():
     
     # Compute the PSPL lightcurve of this event as seen from a stationary Earth. 
     #event.calc_pspl_impact_param()
-    event.calc_pspl_impact_param()
+    #event.calc_pspl_impact_param()
+    event.calc_parallax_impact_param()
+    print 'u0 = ',event.u_o, ' cf u_min = ', event.u_min
     event.calc_magnification(model='pspl')
+    print 'Amax PSPL= ',event.A_t_pspl.max()
+    print '   cf Amax PSPL = ',event.calc_pspl_A( event.u_t.min() )
     event.calc_magnification(model='fspl')
+    print 'Amax FSPL = ',event.A_t_fspl.max()
+    i = np.where( event.A_t_fspl == event.A_t_fspl.max() )
+    print '    at uo = ',event.u_t[i[0][0]]
     
     # Diagnostic plot of relative motion in the lens plane:
     event.plot_lens_plane_motion()
@@ -68,7 +76,7 @@ def generate_fspl():
     fig = plt.figure(1,(12,12)) 
     
     # Single panel						   
-    ax = fig.add_axes([0.15, 0.125, 0.775, 0.45])   #  [left, bottom, width, height]	   
+    ax = fig.add_axes([0.15, 0.125, 0.775, 0.8])   #  [left, bottom, width, height]	   
     
     # Plot PSPL event seen from stationary Earth:
     plt.plot(event.t-2450000.0,event.A_t_pspl,'k-',label='PSPL')
@@ -90,7 +98,17 @@ def generate_fspl():
     					   
     plt.savefig('pspl_curve.png')		
     
-
+    # Output to datafile:
+    fileobj = open('pspl_fspl_curve.dat','w')
+    fileobj.write('# HJD   PSPL A    FSPL A  PSPL mag  FSPL mag\n')
+    mag_pspl = event.calc_mag(model='pspl')
+    mag_fspl = event.calc_mag(model='fspl')
+    for i,t in enumerate(event.t):
+        fileobj.write( str(t) + ' ' + str(event.A_t_pspl[i]) + \
+                        ' ' + str(event.A_t_fspl[i]) + \
+                        ' ' + str(mag_pspl[i]) + ' ' + str(mag_fspl[i]) + '\n' )
+    fileobj.close()
+    
 ###########################
 # COMMANDLINE RUN SECTION
 if __name__ == '__main__':

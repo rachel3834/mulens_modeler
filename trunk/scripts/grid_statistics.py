@@ -42,7 +42,8 @@ class GridPoint:
     def summary( self ):
         """Method to output a summary of all grid-point parameters as a string"""
         
-        line = str( self.u0 ) + ' ' + str( self.te ) + ' ' + str( self.phi ) + \
+        line = str( self.u0 ) + ' ' + str( self.te ) + ' ' + \
+                str( self.phi ) + ' ' + \
                 str( self.mag_base ) + ' ' + str( self.rho ) + ' ' + \
                 str( self.chi2 ) + ' ' + str( self.red_chi2 ) + ' ' + \
                 str( self.n_pts )

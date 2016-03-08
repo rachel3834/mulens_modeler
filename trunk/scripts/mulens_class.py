@@ -30,8 +30,14 @@ class MicrolensingEvent():
         
         # Projected minimum separation of lens and source 
         # [units R_E, lens plane]
+        # u_min is the minimum projected separation of the lens from the 
+        # Sun-Source line.  
+        # For a PSPL event without parallax (i.e. Earth is static)
+        # u_o = u_min
+        # but for events with parallax, u_o (observed) may be different
         self.u_o = None
-        	
+        self.u_min = None
+        
         # Time of minimum projected separation of lens and source:
         self.t_o = None
         	
@@ -127,7 +133,7 @@ class MicrolensingEvent():
         """Method to print a summary of parameters"""
         
         output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
-                ', u_0=' + str(self.u_o) + ', rho=' + str(self.rho) + \
+                ', u_min=' + str(self.u_min) + ', rho=' + str(self.rho) + \
                 ', mag_base=' + str(self.mag_base) + ', phi=' + \
                 str(self.phi)
         return output
@@ -140,13 +146,22 @@ class MicrolensingEvent():
         te = round( te, 1 )
         phi = round( self.phi, 3 )
         mag = round( self.mag_base, 1 )
-        file_name = 'lc_' + str(self.u_o) + '_' + str(te) + \
+        try:
+            uo = round( self.u_o, 4 )
+        except TypeError:
+            uo = round( self.u_min, 4 )
+        file_name = 'lc_' + str(uo) + '_' + str(te) + \
                         '_' + str(phi) + '_' + str(mag) +\
                         '_' + str(self.rho)
         return file_name
         
     ###############################
     # CALCULATE MAGNIFICATION
+    def calc_pspl_A( self, u_t ):
+        A_t = ( u_t * u_t + 2 ) \
+            / ( u_t * np.sqrt( u_t * u_t + 4 ) )
+        return A_t
+        
     def calc_magnification(self,model='pspl'):
         """Method to calculate the magnification during a microlensing event.
         PSPL expression taken from Mao & Pacinzski
@@ -183,14 +198,13 @@ class MicrolensingEvent():
             
             return f
         
-        def calc_pspl_A( u_t ):
-            A_t = ( u_t * u_t + 2 ) \
-                / ( u_t * np.sqrt( u_t * u_t + 4 ) )
-            return A_t
+        
+        # The ratio of u_o to rho is used to judge whether finite
+        # source effects will ever be significant in this lightcurve.  
+        z_o = self.u_o/self.rho
+        if 'pspl' in model or z_o > 10.0:
+            A_t = self.calc_pspl_A( self.u_t ) 
             
-        if 'pspl' in model:
-            A_t = calc_pspl_A( self.u_t ) 
-          
         elif 'fspl' in model:
             z = self.u_t/self.rho
             idx = np.where( z > 10.0 )
@@ -200,7 +214,7 @@ class MicrolensingEvent():
             
             # For points in the lightcurve where z > 10.0 and finite source
             # effects should be neglible, use a PSPL model:
-            A_t[idx] = calc_pspl_A( self.u_t[idx] )
+            A_t[idx] = self.calc_pspl_A( self.u_t[idx] )
             
             # For points in the lightcurve where z <= 10.0, use Lee's
             # approximation method:
@@ -233,10 +247,11 @@ class MicrolensingEvent():
                     if dbg == True:                    
                         print 'u ('+str(u)+') <= rho ('+str(self.rho)+\
                         '), A(t) = '+str(A_t[j])
-                        print factors, term1, term2, term3
+                        print 'Factors: ',factors, term1, term2, term3
                 else:
                     factors = ( 1.0 / (np.pi*self.rho*self.rho) ) \
                                 * ( np.arcsin( self.rho / u ) / n )
+                                
                     term1 = ( ( up * np.sqrt( up*up + 4.0 ) ) \
                              - ( udiff * np.sqrt( udiff*udiff + 4.0 ) ) ) \
                               / 3.0
@@ -260,8 +275,10 @@ class MicrolensingEvent():
                     if dbg == True:                    
                         print 'u ('+str(u)+') > rho ('+str(self.rho)+\
                         ') A(t) = '+str(A_t[j])
+                        print 'Factors: ',factors, term1, term2, term3
         
-        if model == 'pspl': self.A_t_pspl = A_t
+        if model == 'pspl': 
+            self.A_t_pspl = A_t
         elif model == 'fspl': self.A_t_fspl = A_t
         elif model == 'pspl_parallax': self.A_t_pspl_parallax = A_t
         elif model == 'fspl_parallax': self.A_t_fspl_parallax = A_t
@@ -269,7 +286,8 @@ class MicrolensingEvent():
             self.A_t_pspl_parallax_satellite = A_t
         elif model == 'fspl_parallax_satellite': 
             self.A_t_fspl_parallax_satellite = A_t
-            	
+        
+        
     ###############################
     # CALCULATE EINSTEIN RADIUS
     def calc_einstein_radius(self):
@@ -411,7 +429,7 @@ class MicrolensingEvent():
                      np.sin(self.big_omega_dtc)
         self.r_obs = np.sqrt( ( self.x_obs*self.x_obs ) + \
                     ( self.y_obs*self.y_obs ) )
-	
+        
     ###############################
     # POINT-SOURCE, POINT-LENS
     
@@ -419,7 +437,7 @@ class MicrolensingEvent():
     def calc_source_lens_rel_motion(self):
         """Method to calculate the source-lens relative motion for a 
         generic PSPL event"""
-	
+        
     	# Calculate the relative source-lens velocity [ ms^-1] 
         # based on the given t_E:
         self.v_SL = ( 2.0 * self.R_E.value ) / self.t_E.value
@@ -434,15 +452,15 @@ class MicrolensingEvent():
         self.v_SL_dx = nu * np.cos(self.phi)
         self.v_SL_dy = nu * np.sin(self.phi)
     	
-    	# Calculate the time-dependent position of the source relative 
-    	# to the lens in the lens plane in units of the Einstein radius:
+    	# Calculate the time-dependent position of the lens relative 
+    	# to the source in the lens plane in units of the Einstein radius:
         x_incr = ( 1.0 + 1.0 )/len(self.t)
         self.x_lens = np.arange(-1.0,1.0,x_incr)
         self.y_lens = ( self.x_lens * np.tan(self.phi) ) + \
-                 ( self.u_o * np.cos(self.phi) )
+                 ( self.u_min * np.cos(self.phi) )
         self.r_lens = np.sqrt(self.x_lens*self.x_lens + \
                  self.y_lens*self.y_lens)
-          	
+        
     ################################
     # EVENT TIMELINE
     def gen_event_timeline(self,cadence=None,lc_length=None, debug=False):
@@ -520,17 +538,17 @@ class MicrolensingEvent():
         self.ts_jd = np.array(jd)
         
     	
-    def calc_pspl_impact_param(self):
+    def calc_static_observer_impact_param(self):
         """Method to plot (and calculate if necessary) the point-source, 
         	point-lens lightcurve to file."""
 	
     	# Calculate the impact parameter as a function of time
     	# throughout the event, assuming uniform-speed, straight-line 
     	# relative motion of lens and source:
-        self.calc_source_lens_rel_motion()
         dt = ( self.t - self.t_o.jd ) / self.t_E
         self.u_t = np.sqrt( ( dt.value * dt.value ) + \
                      ( self.u_o * self.u_o ) )
+        
     	#print self.u_t
 
     def calc_pspl_curve(self):
@@ -547,7 +565,7 @@ class MicrolensingEvent():
     # PSPL WITH PARALLAX DUE TO EARTH'S ORBITAL MOTION
     
     # Calculate PSPL lightcurve with parallax:
-    def calc_pspl_parallax_impact_param(self):
+    def calc_parallax_impact_param(self):
         """Method to calculate a point-source, point-lens lightcurve given 
         the lens parameters, including the parallax due to Earths orbital 
         motion.
@@ -560,17 +578,19 @@ class MicrolensingEvent():
         alpha_sq = self.alpha.value * self.alpha.value
 	
     	# Calculate impact parameter as a function of time:
-        term1 =  self.u_o*self.u_o
+        # The projected separation of lens-source from the observer's 
+        # perspective. 
+        term1 =  self.u_min*self.u_min
         term2 = self.omega_sq_dt_sq
         term3 = alpha_sq * ( np.sin( self.big_omega_dtc ) )**2 
         term4 = alpha_sq * ( ( np.sin( self.beta.value ) )**2 ) * \
                      ( ( np.cos(self.big_omega_dtc) )**2 ) 
         term5 = 2.0 * self.alpha.value * np.sin(self.big_omega_dtc) * \
                          ( self.omega_dt * np.sin(self.phi) + \
-                             self.u_o * np.cos(self.phi) ) 
+                             self.u_min * np.cos(self.phi) ) 
         term6 = 2.0 * self.alpha.value * np.sin(self.beta.value) * \
                      np.cos(self.big_omega_dtc) * \
-                     ( self.u_o * np.sin(self.phi) - self.omega_dt * \
+                     ( self.u_min * np.sin(self.phi) - self.omega_dt * \
                      np.cos(self.phi) )
     
         usq_t = term1 + term2 + term3 + term4 + term5 + term6
@@ -594,11 +614,32 @@ class MicrolensingEvent():
     	#print usq_t
     	
         self.u_t = np.sqrt(usq_t) 
-    	
+        self.u_o = self.u_t.min()
+        
         #print self.u_t
 
     ##################################
     # OBSERVATION SIMULATION
+    def calc_mag( self, model='pspl' ):
+        """Function to calculate the magnitude of an event as a function of
+        time given its baseline magnitude and magnification"""
+        
+        if model == 'pspl': 
+            A_t = self.A_t_pspl
+        if model == 'fspl': 
+            A_t = self.A_t_fspl
+        if model == 'pspl_parallax': 
+            A_t = self.A_t_pspl_parallax
+        if model == 'pspl_parallax_satelite': 
+            A_t = self.A_t_pspl_parallax_satellite
+        if model == 'fspl_parallax': 
+            A_t = self.A_t_fspl_parallax
+        if model == 'fspl_parallax_satelite': 
+            A_t = self.A_t_fspl_parallax_satellite
+        
+        mag = self.mag_base - 2.5 * np.log10( A_t )
+        return mag
+
     def simulate_data_points(self,model='pspl', phot_precision='1m', \
             window=None, interval=None):
         """Method to extract a series of datapoints from the current model
