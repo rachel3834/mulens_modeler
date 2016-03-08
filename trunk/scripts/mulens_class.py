@@ -772,8 +772,14 @@ class MicrolensingEvent():
         """Function to output a lightcurve file containing the data
         from the current model"""
         
+        te = self.t_E / ( 24.0 * 60.0 * 60.0 )
         fileobj = open( file_name, 'w' )
-        fileobj.write( '# JD       mag         merr\n')
+        fileobj.write( '# u_o = ' + str(self.u_o) + '\n' )
+        fileobj.write( '# t_E = ' + str(te) + 'd\n' )
+        fileobj.write( '# phi = ' + str(self.phi) + 'rads\n' )
+        fileobj.write( '# rho = ' + str(self.rho) + '\n' )
+        fileobj.write( '# Baseline mag = ' + str(self.mag_base) + '\n' )
+        fileobj.write( '# HJD       mag         merr\n')
         n_data = len( self.mag ) - 1
         for i in range(0,n_data,1):
             fileobj.write( str(self.ts[i]) + '  ' + str(self.mag[i]) + \
@@ -793,8 +799,14 @@ class MicrolensingEvent():
         if model == 'pspl_parallax_satelite': 
             A_t = self.A_t_pspl_parallax_satellite
         
+        te = self.t_E / ( 24.0 * 60.0 * 60.0 )
         fileobj = open( file_name, 'w' )
-        fileobj.write( '# JD       mag\n')
+        fileobj.write( '# u_o = ' + str(self.u_o) + '\n' )
+        fileobj.write( '# t_E = ' + str(te) + 'd\n' )
+        fileobj.write( '# phi = ' + str(self.phi) + 'rads\n' )
+        fileobj.write( '# rho = ' + str(self.rho) + '\n' )
+        fileobj.write( '# Baseline mag = ' + str(self.mag_base) + '\n' )
+        fileobj.write( '# HJD       mag\n')
         n_data = len( A_t ) - 1
         for i in range(0,n_data,1):
             mag = self.mag_base - 2.5 * np.log10( A_t[i] )
