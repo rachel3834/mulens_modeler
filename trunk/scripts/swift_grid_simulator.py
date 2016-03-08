@@ -43,7 +43,7 @@ def simulate_grid_models( params ):
     grid = construct_grid( params )
     n_grid = str(len(grid))
 
-    for g, grid_point in enumerate(grid):                    
+    for g, grid_point in enumerate(grid):
         event = mulens_class.MicrolensingEvent()
         event.u_min = grid_point[0]
         event.t_E = TimeDelta((grid_point[1] * 24.0 * 3600.0),format='sec')
@@ -55,82 +55,73 @@ def simulate_grid_models( params ):
         event.D_S = constants.pc * params['source_distance']
         event.RA = '17:57:34.0'
         event.Dec = '-29:13:15.0'
-        event.t_o = Time('2015-06-15T16:00:00', format='isot', scale='utc')
-        event.t_p = Time('2015-06-15T06:37:00', format='isot', scale='utc')
+        event.t_o = Time('2015-01-04T16:00:00', format='isot', scale='utc')
+        event.t_p = Time('2015-01-04T06:37:00', format='isot', scale='utc')
         
-        # Check for pre-existing output and skip if found:
-        file_list = glob.glob( path.join( params['output_path'], \
-                        event.root_file_name()+'*' ) )
-                        
-        if len(file_list) == 0:
+        log.info( 'Computing for grid point parameters (' + str(g+1) + \
+                ' out of ' + n_grid + '):' )
+        log.info( '-> ' + event.summary() )
         
-            log.info( 'Computing for grid point parameters (' + str(g+1) + \
-                    ' out of ' + n_grid + '):' )
-            log.info( '-> ' + event.summary() )
-            
-            # Compute lens essential parameters
-            event.calc_D_lens_source()
-            log.info( '-> calculated the projected separation of lens and source' )
-            event.calc_einstein_radius()
-            log.info( '-> computed the Einstein radius' )
-            event.gen_event_timeline(cadence=params['cadence'], \
-                                        lc_length=params['lc_length'])
-            log.info( '-> generated the event timeline' )
-            event.calc_source_lens_rel_motion()
-            log.info( '-> built lensing event object' )
-            
-            # For ease of handling later, a copy of the basic event
-            # is taken and will be used to compute the same event
-            # as seen from Swift:
-            swift_event = copy.copy( event )
-            log.info( '-> copied to Swift event object' )
-            
-            # Ground-based observer:        
-            # Calculate the model lightcurve and datapoints for an FSPL 
-            # event including annual parallax:
-            event.calc_proj_observer_pos(parallax=True,satellite=False)
-            log.info( '-> calculated the projected observer position' )
-            event.calc_parallax_impact_param()
-            log.info( '-> calculated the PSPL impact parameter' )
-            event.calc_magnification(model='fspl')
-            log.info( '-> calculated the magnification as a function of time' )
-            event.simulate_data_points(model='fspl', phot_precision='1m')
-            log.info( '-> Simulated ground-based model and data' )
-            
-            # Swift observer: 
-            swift_event.swift_t = event.t[0]
-            swift_event.calc_proj_observer_pos(parallax=True,satellite=True)
-            log.info( '-> calculated the projected observer position' )
-            swift_event.calc_parallax_impact_param()
-            log.info( '-> calculated the PSPL impact parameter' )
-            swift_event.calc_magnification(model='fspl')
-            log.info( '-> calculated the magnification as a function of time' )
-            swift_event.simulate_data_points(model='fspl', \
-                                phot_precision='swift', window=0.83, interval=1.6)
-            log.info( '-> Simulated Swift model and data' )
-            
-            # Output data lightcurves:
-            file_path = path.join( params['output_path'], \
-                            event.root_file_name()+'_earth.dat' )
-            event.output_data( file_path )
-            file_path = path.join( params['output_path'], \
-                            event.root_file_name()+'_swift.dat' )
-            swift_event.output_data( file_path )
-            
-            # Output model lightcurves:
-            file_path = path.join(params['output_path'], \
-                            event.root_file_name()+'_earth.model' )
-            event.output_model( file_path, model='fspl' )
-            file_path = path.join( params['output_path'], \
-                            event.root_file_name()+'_swift.model' )
-            swift_event.output_model( file_path, model='fspl' )
-            log.info( '-> Completed output' )
+        # Compute lens essential parameters
+        event.calc_D_lens_source()
+        log.info( '-> calculated the projected separation of lens and source' )
+        event.calc_einstein_radius()
+        log.info( '-> computed the Einstein radius' )
+        event.gen_event_timeline(cadence=params['cadence'], \
+                                    lc_length=params['lc_length'])
+        log.info( '-> generated the event timeline' )
+        event.calc_source_lens_rel_motion()
+        log.info( '-> built lensing event object' )
         
-        else:
-            log.info( ' XX> Found existing output for grid point parameters:' )
-            log.info( ' XX> ' + event.summary() )
-            log.info( 'Skipping.' )
-            
+        # For ease of handling later, a copy of the basic event
+        # is taken and will be used to compute the same event
+        # as seen from Swift:
+        swift_event = copy.copy( event )
+        log.info( '-> copied to Swift event object' )
+        
+        # Ground-based observer:        
+        # Calculate the model lightcurve and datapoints for an FSPL 
+        # event including annual parallax:
+        event.calc_proj_observer_pos(parallax=True,satellite=False)
+        log.info( '-> calculated the projected observer position' )
+        event.calc_parallax_impact_param()
+        log.info( '-> calculated the PSPL impact parameter' )
+        log.info(' -> u_o = ' + str(event.u_o) )
+        event.calc_magnification(model='fspl')
+        log.info( '-> calculated the magnification as a function of time' )
+        event.simulate_data_points(model='fspl', phot_precision='1m')
+        log.info( '-> Simulated ground-based model and data' )
+        
+        # Swift observer: 
+        swift_event.swift_t = event.t[0]
+        swift_event.calc_proj_observer_pos(parallax=True,satellite=True)
+        log.info( '-> calculated the projected observer position' )
+        swift_event.calc_parallax_impact_param()
+        log.info( '-> calculated the PSPL impact parameter' )
+        swift_event.calc_magnification(model='fspl')
+        log.info( '-> calculated the magnification as a function of time' )
+        swift_event.simulate_data_points(model='fspl', \
+                            phot_precision='swift', window=0.83, interval=1.6)
+        log.info( '-> Simulated Swift model and data' )
+        
+        # Output data lightcurves:
+        file_path = path.join( params['output_path'], \
+                        event.root_file_name()+'_earth.dat' )
+        event.output_data( file_path )
+        file_path = path.join( params['output_path'], \
+                        event.root_file_name()+'_swift.dat' )
+        swift_event.output_data( file_path )
+        
+        # Output model lightcurves:
+        file_path = path.join(params['output_path'], \
+                        event.root_file_name()+'_earth.model' )
+        event.output_model( file_path, model='fspl' )
+        file_path = path.join( params['output_path'], \
+                        event.root_file_name()+'_swift.model' )
+        swift_event.output_model( file_path, model='fspl' )
+        log.info( '-> Completed output' )
+        
+        
     log.info( 'Completed simulation' )
     
     log_utilities.end_day_log( log )
@@ -141,26 +132,26 @@ def construct_grid( params ):
     [u0, tE, phi, Vbas, rho]
     """
 
-    (umin, umax, uincr) = params['u0_range']
+    (um_min, um_max,um_incr) = params['umin_range']
     (temin, temax, teincr) = params['te_range']
     (phimin, phimax, phiincr) = params['phi_range']
     (vmin, vmax, vincr) = params['v_range']
     (rhomin, rhomax, rhoincr)= params['rho_range']    
     
     grid = []
-    for u0 in np.arange( umin, umax, uincr ):
-        for te in np.arange( temin, temax, teincr ):
-            for phi in np.arange( phimin, phimax, phiincr ):
-                for Vbase in np.arange( vmin, vmax, vincr ):
-                    for rho in np.arange( rhomin, rhomax, rhoincr ):
-                        grid.append( [u0,te,phi,Vbase,rho] )
+    for te in np.arange( temin, temax, teincr ):
+        for phi in np.arange( phimin, phimax, phiincr ):
+            for Vbase in np.arange( vmin, vmax, vincr ):
+                for rho in np.arange( rhomin, rhomax, rhoincr ):
+                    for um in np.arange( um_min, um_max, um_incr ):
+                        grid.append( [um,te,phi,Vbase,rho] )
     return grid
 
 def parse_input_file( file_path ):
     """Function to parse the input file of simulation parameters into a 
     dictionary of the required format.
     Parameters:
-        u0_range  min  max  incr    [units of RE]
+        umin_range  min  max  incr    [units of RE]
         te_range  min  max  incr    [days]
         phi_range min  max  incr    [deg]
         v_range   min  max  incr    [mag]

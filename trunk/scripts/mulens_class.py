@@ -146,10 +146,9 @@ class MicrolensingEvent():
         te = round( te, 1 )
         phi = round( self.phi, 3 )
         mag = round( self.mag_base, 1 )
-        try:
-            uo = round( self.u_o, 4 )
-        except TypeError:
-            uo = round( self.u_min, 4 )
+        uo = round( self.u_o, 4 )
+        #except TypeError:
+        #    uo = round( self.u_min, 4 )
         file_name = 'lc_' + str(uo) + '_' + str(te) + \
                         '_' + str(phi) + '_' + str(mag) +\
                         '_' + str(self.rho)
