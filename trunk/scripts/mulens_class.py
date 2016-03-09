@@ -363,7 +363,38 @@ class MicrolensingEvent():
             R_earth.append( np.sqrt( ( ph * ph ).sum() ) )
         self.earth_helio_radius = R_earth * constants.au
     	#print self.earth_helio_radius
-	
+    
+    def get_earth_perihelion( self ):
+        """Method to return the appropriate date of Earth's perihelion 
+        for the year of the to
+        As this is derived from tabular data provided by
+        aa.usno.navy.mil/data/docs/EarthSeasons.php
+        it only covers years 2000+        
+        """
+        
+        perihelion_table = { \
+            2000: Time('2000-01-03T05:18:00', format='isot', scale='utc'),
+            2001: Time('2001-01-04T08:52:00', format='isot', scale='utc'),
+            2002: Time('2002-01-02T14:09:00', format='isot', scale='utc'),
+            2003: Time('2003-01-04T05:02:00', format='isot', scale='utc'),
+            2004: Time('2004-01-04T17:42:00', format='isot', scale='utc'),
+            2005: Time('2005-01-02T00:35:00', format='isot', scale='utc'),
+            2006: Time('2006-01-04T15:30:00', format='isot', scale='utc'),
+            2007: Time('2007-01-03T19:43:00', format='isot', scale='utc'),
+            2008: Time('2008-01-02T23:51:00', format='isot', scale='utc'),
+            2009: Time('2009-01-04T15:30:00', format='isot', scale='utc'),
+            2010: Time('2010-01-03T00:09:00', format='isot', scale='utc'),
+            2011: Time('2011-01-03T18:32:00', format='isot', scale='utc'),
+            2012: Time('2012-01-05T00:32:00', format='isot', scale='utc'),
+            2013: Time('2013-01-02T04:38:00', format='isot', scale='utc'),
+            2014: Time('2014-01-04T11:59:00', format='isot', scale='utc'),
+            2015: Time('2015-01-04T06:36:00', format='isot', scale='utc'),
+            2016: Time('2016-01-02T22:49:00', format='isot', scale='utc')
+            }
+    
+        year = int(self.t_o.jyear)
+        self.t_p = perihelion_table[year]
+        
     ################################
     # CALCULATE PROJECTED OBSERVER POSITION
     def calc_proj_observer_pos(self,parallax=False,satellite=False):

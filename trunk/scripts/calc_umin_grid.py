@@ -21,8 +21,8 @@ def calc_umin_grid():
     event.D_S = constants.pc * 8000.0
     event.RA = '17:57:34.0'
     event.Dec = '-29:13:15.0'
-    event.t_o = Time('2015-01-04T16:00:00', format='isot', scale='utc')
-    event.t_p = Time('2015-01-04T06:37:00', format='isot', scale='utc')
+    event.t_o = Time('2015-06-15T16:00:00', format='isot', scale='utc')
+    event.t_p = Time('2015-06-15T06:37:00', format='isot', scale='utc')
     
     fileobj = open('umin_grid.dat', 'w')
     for umin in np.arange(0.00001, 0.2, 0.001):
