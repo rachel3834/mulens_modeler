@@ -84,7 +84,7 @@ def simulate_grid_models( params ):
                                     lc_length=params['lc_length'])
         event.calc_source_lens_rel_motion()
         event.calc_proj_observer_pos(parallax=True,satellite=False)
-        event.calc_parallax_impact_param(set_uo=True)
+        event.calc_parallax_impact_param()
         log.info( '-> generated the event timeline with observing cadence' )
         
         # For ease of handling later, a copy of the basic event
