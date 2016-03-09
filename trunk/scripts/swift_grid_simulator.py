@@ -75,6 +75,7 @@ def simulate_grid_models( params ):
         event.calc_source_lens_rel_motion()
         event.calc_proj_observer_pos(parallax=True,satellite=False)
         event.calc_parallax_impact_param(set_uo=True)
+        log.info(' -> u_o = ' + str(event.u_o) )
         log.info( '-> built lensing event object' )
         
         # Re-generate the event time line etc using the cadence
