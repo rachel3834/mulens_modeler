@@ -22,10 +22,10 @@ def calc_umin_grid():
     event.RA = '17:57:34.0'
     event.Dec = '-29:13:15.0'
     event.t_o = Time('2015-06-15T16:00:00', format='isot', scale='utc')
-    event.t_p = Time('2015-06-15T06:37:00', format='isot', scale='utc')
+    event.get_earth_perihelion()
     
     fileobj = open('umin_grid.dat', 'w')
-    for umin in np.arange(0.00001, 0.2, 0.001):
+    for umin in np.arange(-0.04, 0.2, 0.01):
         event.u_min = umin
         
         event.calc_D_lens_source()

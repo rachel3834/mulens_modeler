@@ -595,7 +595,7 @@ class MicrolensingEvent():
     # PSPL WITH PARALLAX DUE TO EARTH'S ORBITAL MOTION
     
     # Calculate PSPL lightcurve with parallax:
-    def calc_parallax_impact_param(self):
+    def calc_parallax_impact_param(self, set_uo=False):
         """Method to calculate a point-source, point-lens lightcurve given 
         the lens parameters, including the parallax due to Earths orbital 
         motion.
@@ -644,7 +644,8 @@ class MicrolensingEvent():
     	#print usq_t
     	
         self.u_t = np.sqrt(usq_t) 
-        self.u_o = self.u_t.min()
+        if set_uo == True:
+            self.u_o = self.u_t.min()
         
         #print self.u_t
 

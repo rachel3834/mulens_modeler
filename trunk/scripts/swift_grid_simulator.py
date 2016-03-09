@@ -63,16 +63,28 @@ def simulate_grid_models( params ):
         log.info( '-> ' + event.summary() )
         log.info( '-> Time of Earth perihelion for event year: ' + event.t_p.value )
         
-        # Compute lens essential parameters
+        # Compute lens essential parameters, initially with a uniform cadence
+        # lightcurve, to ensure that data are taken at the point of closest 
+        # approach.  This is then used to determine u_o.  
         event.calc_D_lens_source()
         log.info( '-> calculated the projected separation of lens and source' )
         event.calc_einstein_radius()
         log.info( '-> computed the Einstein radius' )
-        event.gen_event_timeline(cadence=params['cadence'], \
-                                    lc_length=params['lc_length'])
+        event.gen_event_timeline()
         log.info( '-> generated the event timeline' )
         event.calc_source_lens_rel_motion()
+        event.calc_proj_observer_pos(parallax=True,satellite=False)
+        event.calc_parallax_impact_param(set_uo=True)
         log.info( '-> built lensing event object' )
+        
+        # Re-generate the event time line etc using the cadence
+        # requested for the Earth-based lightcurve:
+        event.gen_event_timeline(cadence=params['cadence'], \
+                                    lc_length=params['lc_length'])
+        event.calc_source_lens_rel_motion()
+        event.calc_proj_observer_pos(parallax=True,satellite=False)
+        event.calc_parallax_impact_param(set_uo=True)
+        log.info( '-> generated the event timeline with observing cadence' )
         
         # For ease of handling later, a copy of the basic event
         # is taken and will be used to compute the same event
