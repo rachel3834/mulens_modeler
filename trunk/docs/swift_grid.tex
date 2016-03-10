@@ -1,0 +1,150 @@
+%%
+%% Beginning of file 'sample.tex'
+%%
+%% Modified 2005 December 5
+%%
+%% This is a sample manuscript marked up using the
+%% AASTeX v5.x LaTeX 2e macros.
+
+%% The first piece of markup in an AASTeX v5.x document
+%% is the \documentclass command. LaTeX will ignore
+%% any data that comes before this command.
+
+%% The command below calls the preprint style
+%% which will produce a one-column, single-spaced document.
+%% Examples of commands for other substyles follow. Use
+%% whichever is most appropriate for your purposes.
+%%
+%%\documentclass[12pt,preprint]{aastex}
+
+%% manuscript produces a one-column, double-spaced document:
+
+%%\documentclass[manuscript]{aastex}
+
+%% preprint2 produces a double-column, single-spaced document:
+
+\documentclass[preprint2]{aastex}
+
+%% Sometimes a paper's abstract is too long to fit on the
+%% title page in preprint2 mode. When that is the case,
+%% use the longabstract style option.
+
+%% \documentclass[preprint2,longabstract]{aastex}
+
+%% If you want to create your own macros, you can do so
+%% using \newcommand. Your macros should appear before
+%% the \begin{document} command.
+%%
+%% If you are submitting to a journal that translates manuscripts
+%% into SGML, you need to follow certain guidelines when preparing
+%% your macros. See the AASTeX v5.x Author Guide
+%% for information.
+
+\newcommand{\vdag}{(v)^\dagger}
+\newcommand{\myemail}{rstreet@lcogt.net}
+\newcommand{\sptA}{L7.5}
+\newcommand{\sptB}{T0.5}
+\newcommand{\Msol}{M$_{\odot}$}
+
+%% You can insert a short comment on the title page using the command below.
+
+%\slugcomment{Not to appear in Nonlearned J., 45.}
+
+%% If you wish, you may supply running head information, although
+%% this information may be modified by the editorial offices.
+%% The left head contains a list of authors,
+%% usually a maximum of three (otherwise use et al.).  The right
+%% head is a modified title of up to roughly 44 characters.
+%% Running heads will not print in the manuscript style.
+
+\shorttitle{Simulating Swift Observations of Microlensing Events}
+\shortauthors{Shvartzvald et al.}
+
+%% This is the end of the preamble.  Indicate the beginning of the
+%% paper itself with \begin{document}.
+
+\begin{document}
+
+%% LaTeX will automatically break titles if they run longer than
+%% one line. However, you may use \\ to force a line break if
+%% you desire.
+
+\title{Simulating Swift Observations of Microlensing Events}
+
+%% Use \author, \affil, and the \and command to format
+%% author and affiliation information.
+%% Note that \email has replaced the old \authoremail command
+%% from AASTeX v4.0. You can use \email to mark an email address
+%% anywhere in the paper, not just in the front matter.
+%% As in the title, use \\ to force line breaks.
+
+\author{R.A.~Street\altaffilmark{1}}
+\affil{LCOGT, 6740 Cortona Drive, Suite 102, Goleta, CA~93117, USA}
+
+%% Notice that each of these authors has alternate affiliations, which
+%% are identified by the \altaffilmark after each name.  Specify alternate
+%% affiliation information with \altaffiltext, with one command per each
+%% affiliation.
+
+%% Mark off your abstract in the ``abstract'' environment. In the manuscript
+%% style, abstract will output a Received/Accepted line after the
+%% title and affiliation information. No date will appear since the author
+%% does not have this information. The dates will be filled in by the
+%% editorial office after submission.
+
+%\begin{abstract}
+%\end{abstract}
+
+%% Keywords should appear after the \end{abstract} command. The uncommented
+%% example has been keyed in ApJ style. See the instructions to authors
+%% for the journal to which you are submitting your paper to determine
+%% what keyword punctuation is appropriate.
+
+%\keywords{brown dwarfs: general --- brown dwarfs: individual(Luhman-16,
+%WISE-J1049-5319}
+
+%% From the front matter, we move on to the body of the paper.
+%% In the first two sections, notice the use of the natbib \citep
+%% and \citet commands to identify citations.  The citations are
+%% tied to the reference list via symbolic KEYs. The KEY corresponds
+%% to the KEY in the \bibitem in the reference list below. We have
+%% chosen the first three characters of the first author's name plus
+%% the last two numeral of the year of publication as our KEY for
+%% each reference.
+
+
+%% Authors who wish to have the most important objects in their paper
+%% linked in the electronic edition to a data center may do so by tagging
+%% their objects with \objectname{} or \object{}.  Each macro takes the
+%% object name as its required argument. The optional, square-bracket 
+%% argument should be used in cases where the data center identification
+%% differs from what is to be printed in the paper.  The text appearing 
+%% in curly braces is what will appear in print in the published paper. 
+%% If the object name is recognized by the data centers, it will be linked
+%% in the electronic edition to the object data available at the data centers  
+%%
+%% Note that for sources with brackets in their names, e.g. [WEG2004] 14h-090,
+%% the brackets must be escaped with backslashes when used in the first
+%% square-bracket argument, for instance, \object[\[WEG2004\] 14h-090]{90}).
+%%  Otherwise, LaTeX will issue an error. 
+
+\section{Introduction}
+
+The unique target-of-opportunity override capability of the Swift spacecraft is, by design, ideal for the observation of transient variables of all kinds and a requirement for microlensing follow-up programs.  Although the difference between the Swift- and Earth-based lightcurves was small in the case of the current event, for future reference it is of interest to establish what classes of events, if any, it would be benefitial to request Swift observations of.  
+
+To address this question, we simulated the lightcurves of a wide range of microlensing events as seen from both observatories on Earth and Swift.  The parameters of these events span a grid $u_{0}$={0.0001:0.0901}, $t_{E}$={1.0:81.0}\,d, $\phi$={0.0,90.0}$^{\circ}$, $\rho$={0.001,0.011} and baseline magnitude={12.0:19.0}\,mag.  Here, $\phi$ is the angle between the source trajectory vector and ecliptic north.  In all cases the single lens of 0.3\Msol was taken to be at a distance of 4\,kpc and the source was assumed to be 8\,kpc distant.  
+
+As microlensing has moved into the era of continuous observations (from multiple networked observatories) with the advent of ``NextGen'' surveys and LCOGT, we have taken the optimum case and simulated an observing cadence of 1 exposure every 15\,min.  We neglect weather and other likely interruptions as our aim is to establish what observational signature is detectable rather than to predict the outcome of a specific program.  Photometric uncertainties are estimated by summing in quaderature the  contributions of Poisson noise, read noise, sky background and scintillation for a 1m-class telescope.  
+
+To simulate Swift lightcurves, we take into account the visibilty calculations above and assume that our simulated event can be observed for 50\,min every 1.6,\hrs (Swift's Low Earth Orbital period).  Photometric uncertainties were assigned as above, computing for a 0.3\,m telescope but neglecting scintillation and read noise (a feature of the UVOT detector).  
+
+Both Earth- and Swift-lightcurves are produced spanning 300\,d centred on $t_{0}$, regardless of the event duration for ease of comparison.  In Swift's case this does of course neglect the necessity of issuing an alert by some criteria following the discovery of the event in observations from Earth.  We opt not to include this, because detection of measureably different lightcurves from Earth would then depend on the (arbitrary) choice of when the alert was issued and observations commenced from Swift.  
+
+Finally, we factor in the annual visbility of the Galactic Bulge from Earth.  In order for Earth to be able to observe continuously events of durations between 1.0-81.0\,d, we set $t_{0}$=2015-06-15 T 16:00:00 UTC.  
+
+In order for Swift observations to provide useful constraints on a lensing event, its lightcurve must be measureably different from that seen from Earth.  We evaluate this by computing the $\chi^{2}$ between the lightcurves for each point in the grid.  
+
+\end{document}
+
+%%
+%% End of file `sample.tex'.
