@@ -28,8 +28,10 @@ def plot_heat_map_3d( stats_file ):
     ax = fig.add_subplot(111, projection='3d')   # [left, bottom, width, height]	   
     
     # Identify data points for a given pair of rho and phi:
-    rx = np.where( stats_data[:,4] == 0.001 ) 
-    px = np.where( stats_data[:,2] == 0.0 )
+    select_rho = 0.001
+    select_phi = 0.0
+    rx = np.where( stats_data[:,4] == select_rho ) 
+    px = np.where( stats_data[:,2] == select_phi )
     idx = np.intersect1d(rx,px)
     
     u0 = stats_data[idx,0]
@@ -46,6 +48,8 @@ def plot_heat_map_3d( stats_file ):
     ax.set_xlabel( '$u_{O}$', fontdict={'fontsize': 18 } )
     ax.set_ylabel( '$t_{E}$', fontdict={'fontsize': 18 } )
     ax.set_zlabel( 'Star mag (baseline)', fontdict={'fontsize': 18 } )
+    ax.set_title( '$\\chi^{2}$ heat map for $\\rho$='+str(select_rho)+\
+                ' $\\phi$='+str(select_phi), fontdict={'fontsize': 18 } )
     ax.invert_zaxis()
 
     cbar = plt.colorbar(scatter_plot, shrink=0.5, aspect=20)
@@ -59,6 +63,8 @@ def plot_heat_map_3d( stats_file ):
     cbar.set_ticklabels(clabels)
     
     data_dir = path.dirname( stats_file )
+    #plt.show()
+    
     plt.savefig( path.join( data_dir,'stats_heat_map.png' ) )
 
 def read_stats_grid_data( stats_file ):

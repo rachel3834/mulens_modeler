@@ -12,7 +12,7 @@ def calc_umin_grid():
     
     # Example lensing event
     event = mulens_class.MicrolensingEvent()
-    event.t_E = TimeDelta((1.0 * 24.0 * 3600.0),format='sec')
+    event.t_E = TimeDelta((81.0 * 24.0 * 3600.0),format='sec')
     event.phi = ( 0.0 * np.pi ) / 180.0
     event.mag_base = 12.0
     event.rho = 0.001
@@ -25,7 +25,7 @@ def calc_umin_grid():
     event.get_earth_perihelion()
     
     fileobj = open('umin_grid.dat', 'w')
-    for umin in np.arange(-0.04, 0.2, 0.01):
+    for umin in np.arange(-0.35, 0.25, 0.01):
         event.u_min = umin
         
         event.calc_D_lens_source()
@@ -33,10 +33,12 @@ def calc_umin_grid():
         event.gen_event_timeline()
         event.calc_source_lens_rel_motion()
         event.calc_proj_observer_pos(parallax=True,satellite=False)
-        event.calc_parallax_impact_param()
+        event.calc_parallax_impact_param(set_uo=True)
+        A = event.calc_pspl_A( event.u_o )
         
         fileobj.write('u_min = ' + str(event.u_min) + \
-                            ' -> u_o = ' + str(event.u_o) + '\n' )
+                            ' -> u_o = ' + str(event.u_o) + \
+                            ' A = ' + str(A) + '\n' )
         fileobj.flush()
     fileobj.close()
     
