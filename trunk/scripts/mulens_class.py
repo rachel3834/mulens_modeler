@@ -132,10 +132,13 @@ class MicrolensingEvent():
     def summary(self):    
         """Method to print a summary of parameters"""
         
+        ml = round( self.M_L.value/constants.M_sun.value, 4 )
+        dl = round( self.D_L.value/constants.pc.value, 4 )
         output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
                 ', u_min=' + str(self.u_min) + ', rho=' + str(self.rho) + \
                 ', mag_base=' + str(self.mag_base) + ', phi=' + \
-                str(self.phi)
+                str(self.phi) + ', M_L=' + str(ml) + 'Msol, D_L=' + \
+                str(dl) + 'pc'
         return output
     
     def root_file_name( self ):
@@ -147,11 +150,14 @@ class MicrolensingEvent():
         phi = round( self.phi, 3 )
         mag = round( self.mag_base, 1 )
         uo = round( self.u_o, 4 )
+        ml = round( self.M_L.value/constants.M_sun.value, 6 )
+        dl = round( self.D_L.value/constants.pc.value, 4 )
         #except TypeError:
         #    uo = round( self.u_min, 4 )
         file_name = 'lc_' + str(uo) + '_' + str(te) + \
                         '_' + str(phi) + '_' + str(mag) +\
-                        '_' + str(self.rho)
+                        '_' + str(self.rho) + '_' + str(ml) +\
+                        '_' + str(dl)
         return file_name
         
     ###############################

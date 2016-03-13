@@ -6,6 +6,9 @@ Created on Tue Mar  8 05:46:14 2016
 """
 import mulens_class
 import numpy as np
+from astropy import constants, coordinates, units
+from astropy.time import Time, TimeDelta
+
 
 def calc_umin_grid():
     """Function to determine the umin grid necessary"""
@@ -25,7 +28,7 @@ def calc_umin_grid():
     event.get_earth_perihelion()
     
     fileobj = open('umin_grid.dat', 'w')
-    for umin in np.arange(-0.35, 0.25, 0.01):
+    for umin in np.arange(-0.04, -0.02, 0.001):
         event.u_min = umin
         
         event.calc_D_lens_source()

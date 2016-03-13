@@ -43,15 +43,16 @@ def simulate_grid_models( params ):
     grid = construct_grid( params )
     n_grid = str(len(grid))
 
+    # Grid point parameter list: [ml,dl,um,te,phi,Vbase,rho]
     for g, grid_point in enumerate(grid):
         event = mulens_class.MicrolensingEvent()
-        event.u_min = grid_point[0]
-        event.t_E = TimeDelta((grid_point[1] * 24.0 * 3600.0),format='sec')
-        event.phi = ( grid_point[2] * np.pi ) / 180.0
-        event.mag_base = grid_point[3]
-        event.rho = grid_point[4]
-        event.M_L = constants.M_sun * params['lens_mass']
-        event.D_L = constants.pc * params['lens_distance']
+        event.u_min = grid_point[2]
+        event.t_E = TimeDelta((grid_point[3] * 24.0 * 3600.0),format='sec')
+        event.phi = ( grid_point[4] * np.pi ) / 180.0
+        event.mag_base = grid_point[5]
+        event.rho = grid_point[6]
+        event.M_L = constants.M_sun * grid_point[0]
+        event.D_L = constants.pc * grid_point[1]
         event.D_S = constants.pc * params['source_distance']
         event.RA = '17:57:34.0'
         event.Dec = '-29:13:15.0'
@@ -146,26 +147,33 @@ def construct_grid( params ):
     [u0, tE, phi, Vbas, rho]
     """
 
-    (um_min, um_max,um_incr) = params['umin_range']
+    if 'umin_range' in params.keys():    
+        (um_min, um_max,um_incr) = params['umin_range']
+        umin_list = np.arange( um_min, um_max, um_incr )
+    else:
+        umin_list = params['umin_list']
+        
     (temin, temax, teincr) = params['te_range']
     (phimin, phimax, phiincr) = params['phi_range']
     (vmin, vmax, vincr) = params['v_range']
     (rhomin, rhomax, rhoincr)= params['rho_range']    
     
     grid = []
-    for te in np.arange( temin, temax, teincr ):
-        for phi in np.arange( phimin, phimax, phiincr ):
-            for Vbase in np.arange( vmin, vmax, vincr ):
-                for rho in np.arange( rhomin, rhomax, rhoincr ):
-                    for um in np.arange( um_min, um_max, um_incr ):
-                        grid.append( [um,te,phi,Vbase,rho] )
+    for ml in params['lens_mass_list']:
+        for dl in params['lens_distance_range']:
+            for te in np.arange( temin, temax, teincr ):
+                for phi in np.arange( phimin, phimax, phiincr ):
+                    for Vbase in np.arange( vmin, vmax, vincr ):
+                        for rho in np.arange( rhomin, rhomax, rhoincr ):
+                            for um in umin_list:
+                                grid.append( [ml,dl,um,te,phi,Vbase,rho] )
     return grid
 
 def parse_input_file( file_path ):
     """Function to parse the input file of simulation parameters into a 
     dictionary of the required format.
     Parameters:
-        umin_range  min  max  incr    [units of RE]
+        umin_range  min  max  incr  [units of RE]
         te_range  min  max  incr    [days]
         phi_range min  max  incr    [deg]
         v_range   min  max  incr    [mag]
@@ -192,6 +200,10 @@ def parse_input_file( file_path ):
             rmax = float( entries[2] )
             incr = float( entries[3] )
             value = [ rmin, rmax, incr ]
+        elif 'list' in key:
+            value = []
+            for item in entries[1:]:
+                value.append( float(item) )
         else:
             try:
                 value = float( entries[1] )
