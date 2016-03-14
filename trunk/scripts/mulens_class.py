@@ -134,7 +134,6 @@ class MicrolensingEvent():
         
         ml = round( self.M_L.value/constants.M_sun.value, 6 )
         dl = round( self.D_L.value/constants.pc.value, 4 )
-        uo = round( self.u_o, 1 )
         if inc_uo == False:
             output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
                 ', u_min=' + str(self.u_min) + ', rho=' + str(self.rho) + \
@@ -142,6 +141,7 @@ class MicrolensingEvent():
                 str(self.phi) + ', M_L=' + str(ml) + 'Msol, D_L=' + \
                 str(dl) + 'pc'
         else:
+            uo = round( self.u_o, 1 )
             output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
                 ', u_min=' + str(self.u_min) + ', u_o=' + str(uo) + \
                 ', rho=' + str(self.rho) + \
