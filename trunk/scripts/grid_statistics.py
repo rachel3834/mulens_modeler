@@ -26,6 +26,7 @@ class GridPoint:
         self.mag_base = None
         self.chi2 = None
         self.red_chi2 = None
+        self.dchi2 = None
         self.n_pts = None
 
     def set_par_from_file( self, file_name ):
@@ -45,8 +46,7 @@ class GridPoint:
         line = str( self.u0 ) + ' ' + str( self.te ) + ' ' + \
                 str( self.phi ) + ' ' + \
                 str( self.mag_base ) + ' ' + str( self.rho ) + ' ' + \
-                str( self.chi2 ) + ' ' + str( self.red_chi2 ) + ' ' + \
-                str( self.n_pts )
+                str( self.dchi2 ) 
         return line
         
 def grid_locale_stats( grid_dir ):
@@ -63,7 +63,7 @@ def grid_locale_stats( grid_dir ):
     # Open output file:
     output_file = path.join( grid_dir, 'grid_locale_stats.dat' )
     output = open(output_file, 'w')    
-    output.write('# u0     tE      phi    mag_base   rho  chi_sq\n')
+    output.write('# u0     tE      phi    mag_base   rho  dchi_sq \n')
     
     # Loop over each file, recording the computed difference statistic between
     # the Earth- and Swift-lightcurves for the same grid point model.
@@ -77,14 +77,22 @@ def grid_locale_stats( grid_dir ):
         earth_data = read_lc_file( earth_lc_file )
         swift_data = read_lc_file( swift_lc_file )
         
-        ( gp.chi2, gp.red_chi2, gp.n_pts ) = diff_lcs( earth_data, swift_data )
+        swift_model_file = str(earth_lc_file).replace('earth.dat','swift.model')
+        earth_model_file = str(earth_lc_file).replace('earth.dat','earth.model')
+        
+        earth_model = read_lc_file( earth_model_file, model=True )
+        swift_model = read_lc_file( swift_model_file, model=True )
+        
+        #( gp.chi2, gp.red_chi2, gp.n_pts ) = diff_lcs( earth_data, swift_data )
+        
+        gp.dchi2 = calc_dchi2( earth_data, earth_model, swift_data, swift_model )
         
         print gp.summary()
         output.write( gp.summary() + '\n' )
     
     output.close()
     
-def read_lc_file( lc_file ):
+def read_lc_file( lc_file, model=False ):
     """Function to read the lightcurve output datafiles"""
 
     if path.isfile( lc_file ) == None:
@@ -97,13 +105,80 @@ def read_lc_file( lc_file ):
     for line in file_lines:
         if line[0:1] != '#':
             entries = str( line ).split()
-            lc_data.append( [ float( entries[0] ), \
+            if model == True:
+                lc_data.append( [ float( entries[0] ), \
                                 float( entries[1] ), \
                                     float( entries[2] ) ] )
+            else:
+                
+                lc_data.append( [ float( entries[0] ), \
+                                float( entries[1] ) ] )
     
     lc_data = np.array( lc_data )
     return lc_data 
+
+def calc_dchi2( earth_lc, earth_model, swift_lc, swift_model ):
+    """Function to calculate the delta chi 2 between the swift-swift model and 
+    Earth lightcurve"""
     
+    # Extract the indices of the lightcurve timestamps common to both
+    # datasets. 
+    idx = common_ts( swift_lc, swift_model )
+    
+    # Compute chi2 of the Swift lightcurve with its model:
+    swift_chi2 = calc_chi2( swift_lc, swift_model, idx )
+
+    idx = common_ts( earth_lc, swift_lc )
+    swift_earth_chi2 = calc_chi2( earth_lc, swift_lc, idx )
+    
+    dchi2 = swift_chi2 - swift_earth_chi2
+    return dchi2
+
+def calc_chi2( lc1, lc2, idx, use_err2=False ):
+    """Calculate chi2 between lightcurves, where idx is an array giving
+    the common timestamps"""
+    
+    merr1 = lc1[idx,2]
+    merr2 = lc2[:,2]
+    if use_err2 == True:
+        sigma = np.sqrt( merr1*merr1 + merr2*merr2 )
+    else:
+        sigma = merr1
+        
+    if debug == True:
+        print 'Sigma = ', sigma
+    
+    diff = diff / sigma
+    if debug == True:
+        print 'Weighted diff = ', diff
+    
+    chi2 = ( ( diff * diff ).sum() )
+    return chi2
+
+def common_ts( lc1, lc2 ):
+    """Swift has different sampling from Earth, but the datapoints in both
+    lightcurves are taken at the same timestamps - the Swift lightcurve
+    is just missing some timestamps. So the first task is to select those
+    parts of the Earth lightcurve which have correspondig Swift datapoints
+    we can compare with. 
+
+    The Earth lightcurve with the superset of datapoints should be given
+    as lc1."""
+
+    # Extract the indices of the lightcurve timestamps common to both
+    # datasets. 
+    idx = []
+    ts1 = lc1[:,0]
+    for i,ts in enumerate( lc2[:,0] ):
+        if ts in ts1: 
+            j = np.where( ts1 == ts )
+            idx.append(j[0][0])
+    
+    if debug == True:
+        print lc1[idx,0], lc2[:,0]
+    
+    return idx
+
 def diff_lcs( lc1, lc2, debug=False ):
     """Function to compute basic statistics to estimate the degree of variation 
     between two lightcurves. 
@@ -120,15 +195,7 @@ def diff_lcs( lc1, lc2, debug=False ):
     
     # Extract the indices of the lightcurve timestamps common to both
     # datasets. 
-    idx = []
-    ts1 = lc1[:,0]
-    for i,ts in enumerate( lc2[:,0] ):
-        if ts in ts1: 
-            j = np.where( ts1 == ts )
-            idx.append(j[0][0])
-    
-    if debug == True:
-        print lc1[idx,0], lc2[:,0]
+    idx = common_ts( lc1, lc2 )
     
     # Compute the chi2:
     diff = lc1[idx,1] - lc2[:,1]
