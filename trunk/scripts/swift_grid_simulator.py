@@ -79,6 +79,9 @@ def simulate_grid_models( params ):
         log.info(' -> u_o = ' + str(event.u_o) )
         log.info( '-> built lensing event object' )
         
+        # Continue if this is a high-mag event as seen from Earth:
+        #if event.u_o < 0.01:
+        
         # Re-generate the event time line etc using the cadence
         # requested for the Earth-based lightcurve:
         event.gen_event_timeline(cadence=params['cadence'], \
@@ -136,6 +139,8 @@ def simulate_grid_models( params ):
         swift_event.output_model( file_path, model='fspl' )
         log.info( '-> Completed output' )
         
+        #else:
+        #    log.info( '-> u_o too large to be interesting, skipping' )
         
     log.info( 'Completed simulation' )
     
@@ -157,10 +162,11 @@ def construct_grid( params ):
     (phimin, phimax, phiincr) = params['phi_range']
     (vmin, vmax, vincr) = params['v_range']
     (rhomin, rhomax, rhoincr)= params['rho_range']    
+    (dlmin, dlmax, dlincr)= params['lens_distance_range']
     
     grid = []
     for ml in params['lens_mass_list']:
-        for dl in params['lens_distance_range']:
+        for dl in np.arange( dlmin, dlmax, dlincr ):
             for te in np.arange( temin, temax, teincr ):
                 for phi in np.arange( phimin, phimax, phiincr ):
                     for Vbase in np.arange( vmin, vmax, vincr ):

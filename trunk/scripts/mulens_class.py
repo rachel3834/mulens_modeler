@@ -129,16 +129,25 @@ class MicrolensingEvent():
         self.omega_swift = 1.0 / self.swift_orbit_period
         self.swift_t = None
     
-    def summary(self):    
+    def summary(self, inc_uo=False):    
         """Method to print a summary of parameters"""
         
-        ml = round( self.M_L.value/constants.M_sun.value, 4 )
+        ml = round( self.M_L.value/constants.M_sun.value, 6 )
         dl = round( self.D_L.value/constants.pc.value, 4 )
-        output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
+        uo = round( self.u_o, 1 )
+        if inc_uo == False:
+            output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
                 ', u_min=' + str(self.u_min) + ', rho=' + str(self.rho) + \
                 ', mag_base=' + str(self.mag_base) + ', phi=' + \
                 str(self.phi) + ', M_L=' + str(ml) + 'Msol, D_L=' + \
                 str(dl) + 'pc'
+        else:
+            output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
+                ', u_min=' + str(self.u_min) + ', u_o=' + str(uo) + \
+                ', rho=' + str(self.rho) + \
+                ', mag_base=' + str(self.mag_base) + ', phi=' + \
+                str(self.phi) + ', M_L=' + str(ml) + 'Msol, D_L=' + \
+                str(dl) + 'pc, R_E=' + str(self.R_E)
         return output
     
     def root_file_name( self ):
@@ -432,9 +441,7 @@ class MicrolensingEvent():
     	# Identify the time of closest approach of the observer to the 
     	# Sun-source line:
         i = np.where( r_obs == r_obs.min() )
-        self.t_c = self.t[i][0]
-    	#print 'Time of closest approach of observer to Sun-source line: ', \
-         #self.t_c
+        self.t_c = self.t[i]
     	
     	# Projecting this radius to the lens plane:
         self.alpha = ( r_obs * ( 1.0 - ( self.D_L / self.D_S ) ) ) \
@@ -454,7 +461,9 @@ class MicrolensingEvent():
         dtp = self.t - self.t_p.jd
         self.big_omega_dtc = self.big_omega_o * dtc + 2.0 * \
                  earth_orbit_e * np.sin( self.big_omega_o * dtp )
-    	
+        #print 'OMEGA: ',(self.big_omega_o* dtc), self.t_c,self.t, earth_orbit_e, \
+        #       np.sin( self.big_omega_o * dtp ), self.big_omega_dtc
+                
     	# Factoring in the ecliptic latitude, beta, to arrive at the 
         # projected observer location in the lens plane as a function 
         # of time during the event:
@@ -465,7 +474,7 @@ class MicrolensingEvent():
                      np.sin(self.big_omega_dtc)
         self.r_obs = np.sqrt( ( self.x_obs*self.x_obs ) + \
                     ( self.y_obs*self.y_obs ) )
-        
+                    
     ###############################
     # POINT-SOURCE, POINT-LENS
     
@@ -620,8 +629,8 @@ class MicrolensingEvent():
         term2 = self.omega_sq_dt_sq
         term3 = alpha_sq * ( np.sin( self.big_omega_dtc ) )**2 
         term4 = alpha_sq * ( ( np.sin( self.beta.value ) )**2 ) * \
-                     ( ( np.cos(self.big_omega_dtc) )**2 ) 
-        term5 = 2.0 * self.alpha.value * np.sin(self.big_omega_dtc) * \
+                    ( ( np.cos(self.big_omega_dtc) )**2 ) 
+        term5 = -2.0 * self.alpha.value * np.sin(self.big_omega_dtc) * \
                          ( self.omega_dt * np.sin(self.phi) + \
                              self.u_min * np.cos(self.phi) ) 
         term6 = 2.0 * self.alpha.value * np.sin(self.beta.value) * \
@@ -634,13 +643,14 @@ class MicrolensingEvent():
     	# Print these terms at t_o?  Or find when they are all minimised? 
         # Term 3 largest at t=t_o
         if dbg == True:
-            i = np.where(self.t == self.t_o.jd)
             print 'u(t)^2 terms: ',term1, \
-    	      	      	term2[i], \
-    			term3[i], \
-    			term4[i], \
-    			term5[i],\
-    			term6[i]
+    	      	      	term2[0], \
+    			term3[0], \
+    			term4[0], \
+    			term5[0],\
+    			term6[0], \
+                   alpha_sq, ( np.sin( self.beta.value ) )**2, \
+                   ( np.cos(self.big_omega_dtc) )**2
     	
     	#dx = self.x_lens - self.x_obs
     	#dy = self.y_lens - self.y_obs
@@ -653,7 +663,7 @@ class MicrolensingEvent():
         if set_uo == True:
             self.u_o = self.u_t.min()
         
-        #print self.u_t
+        #print 'u(t) min: ',self.u_t.min()
 
     ##################################
     # OBSERVATION SIMULATION
@@ -813,6 +823,7 @@ class MicrolensingEvent():
         te = self.t_E / ( 24.0 * 60.0 * 60.0 )
         fileobj = open( file_name, 'w' )
         fileobj.write( '# u_o = ' + str(self.u_o) + '\n' )
+        fileobj.write( '# u_min = ' + str(self.u_min) + '\n' )
         fileobj.write( '# t_E = ' + str(te) + 'd\n' )
         fileobj.write( '# phi = ' + str(self.phi) + 'rads\n' )
         fileobj.write( '# rho = ' + str(self.rho) + '\n' )
@@ -840,6 +851,7 @@ class MicrolensingEvent():
         te = self.t_E / ( 24.0 * 60.0 * 60.0 )
         fileobj = open( file_name, 'w' )
         fileobj.write( '# u_o = ' + str(self.u_o) + '\n' )
+        fileobj.write( '# u_min = ' + str(self.u_min) + '\n' )
         fileobj.write( '# t_E = ' + str(te) + 'd\n' )
         fileobj.write( '# phi = ' + str(self.phi) + 'rads\n' )
         fileobj.write( '# rho = ' + str(self.rho) + '\n' )

@@ -105,7 +105,7 @@ def read_lc_file( lc_file, model=False ):
     for line in file_lines:
         if line[0:1] != '#':
             entries = str( line ).split()
-            if model == True:
+            if model == False:
                 lc_data.append( [ float( entries[0] ), \
                                 float( entries[1] ), \
                                     float( entries[2] ) ] )
@@ -122,11 +122,12 @@ def calc_dchi2( earth_lc, earth_model, swift_lc, swift_model ):
     Earth lightcurve"""
     
     # Extract the indices of the lightcurve timestamps common to both
-    # datasets. 
-    idx = common_ts( swift_lc, swift_model )
+    # datasets. Swift dataset has the fewest points, so for consistency, 
+    # use this dataset to identify which points to include:
+    idx = common_ts( swift_model, swift_lc )
     
     # Compute chi2 of the Swift lightcurve with its model:
-    swift_chi2 = calc_chi2( swift_lc, swift_model, idx )
+    swift_chi2 = calc_chi2( swift_model, swift_lc, idx )
 
     idx = common_ts( earth_lc, swift_lc )
     swift_earth_chi2 = calc_chi2( earth_lc, swift_lc, idx )
@@ -134,28 +135,34 @@ def calc_dchi2( earth_lc, earth_model, swift_lc, swift_model ):
     dchi2 = swift_chi2 - swift_earth_chi2
     return dchi2
 
-def calc_chi2( lc1, lc2, idx, use_err2=False ):
+def calc_chi2( lc1, lc2, idx, use_err1=False, debug=False ):
     """Calculate chi2 between lightcurves, where idx is an array giving
     the common timestamps"""
     
-    merr1 = lc1[idx,2]
+    print len(lc1), len(lc2), len(lc1[idx,1])
+    
     merr2 = lc2[:,2]
-    if use_err2 == True:
+    if use_err1 == True:
+        merr1 = lc1[idx,2]
         sigma = np.sqrt( merr1*merr1 + merr2*merr2 )
     else:
-        sigma = merr1
+        sigma = merr2
         
     if debug == True:
         print 'Sigma = ', sigma
-    
+        
+    diff = lc1[idx,1] - lc2[:,1]
     diff = diff / sigma
     if debug == True:
         print 'Weighted diff = ', diff
     
     chi2 = ( ( diff * diff ).sum() )
+    if debug == True:
+        print 'Chi^2: ',chi2
+    
     return chi2
 
-def common_ts( lc1, lc2 ):
+def common_ts( lc1, lc2, debug=False ):
     """Swift has different sampling from Earth, but the datapoints in both
     lightcurves are taken at the same timestamps - the Swift lightcurve
     is just missing some timestamps. So the first task is to select those
@@ -164,7 +171,7 @@ def common_ts( lc1, lc2 ):
 
     The Earth lightcurve with the superset of datapoints should be given
     as lc1."""
-
+    
     # Extract the indices of the lightcurve timestamps common to both
     # datasets. 
     idx = []
