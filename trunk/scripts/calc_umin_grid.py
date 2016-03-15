@@ -25,11 +25,13 @@ def calc_umin_grid(grid_dir):
     # which result in low u_o values:    
     fileobj = open(path.join(grid_dir,'umin_grid.dat'), 'w')
     for grid_point in grid:
-        for umin in np.arange(0.0001, 0.001, 0.001):
-        
+        for offset in [ 0.0, 0.2 ]:
+            
+            print 'OFFSET = ',offset
             # Example lensing event
             event = mulens_class.MicrolensingEvent()
-            event.u_min = umin
+            event.u_min = 0.0
+            event.u_offset= offset
             event.t_E = TimeDelta((grid_point[2] * 24.0 * 3600.0),format='sec')
             event.phi = ( grid_point[3] * np.pi ) / 180.0
             event.mag_base = 12.0
@@ -40,11 +42,10 @@ def calc_umin_grid(grid_dir):
             event.D_S = constants.pc * 8000.0
             event.RA = '17:57:34.0'
             event.Dec = '-29:13:15.0'
-            event.t_o = Time('2015-03-15T16:00:00', format='isot', scale='utc')
+            event.t_o = Time('2015-06-15T16:00:00', format='isot', scale='utc')
             
             event.get_earth_perihelion()
         
-            event.u_min = umin
             
             event.calc_D_lens_source()
             event.calc_einstein_radius()
@@ -57,7 +58,9 @@ def calc_umin_grid(grid_dir):
             #if event.u_o < 0.01:
             fileobj.write( event.summary(inc_uo=True) + '\n' )
             fileobj.flush()
-        
+            
+            event.plot_lens_plane_motion()
+            
             cont = False
             if cont == True:
                 event.get_earth_perihelion()

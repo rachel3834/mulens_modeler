@@ -46,7 +46,8 @@ def simulate_grid_models( params ):
     # Grid point parameter list: [ml,dl,um,te,phi,Vbase,rho]
     for g, grid_point in enumerate(grid):
         event = mulens_class.MicrolensingEvent()
-        event.u_min = grid_point[2]
+        event.u_min = 0.0
+        event.u_offset = grid_point[2]
         event.t_E = TimeDelta((grid_point[3] * 24.0 * 3600.0),format='sec')
         event.phi = ( grid_point[4] * np.pi ) / 180.0
         event.mag_base = grid_point[5]
@@ -152,11 +153,11 @@ def construct_grid( params ):
     [u0, tE, phi, Vbas, rho]
     """
 
-    if 'umin_range' in params.keys():    
-        (um_min, um_max,um_incr) = params['umin_range']
-        umin_list = np.arange( um_min, um_max, um_incr )
+    if 'uoffset_range' in params.keys():    
+        (um_min, um_max,um_incr) = params['uoffset_range']
+        uoffset_list = np.arange( um_min, um_max, um_incr )
     else:
-        umin_list = params['umin_list']
+        uoffset_list = params['uoffset_list']
         
     (temin, temax, teincr) = params['te_range']
     (phimin, phimax, phiincr) = params['phi_range']
@@ -171,7 +172,7 @@ def construct_grid( params ):
                 for phi in np.arange( phimin, phimax, phiincr ):
                     for Vbase in np.arange( vmin, vmax, vincr ):
                         for rho in np.arange( rhomin, rhomax, rhoincr ):
-                            for um in umin_list:
+                            for um in uoffset_list:
                                 grid.append( [ml,dl,um,te,phi,Vbase,rho] )
     return grid
 
@@ -179,7 +180,7 @@ def parse_input_file( file_path ):
     """Function to parse the input file of simulation parameters into a 
     dictionary of the required format.
     Parameters:
-        umin_range  min  max  incr  [units of RE]
+        uoffset_list  min  max  incr  [units of RE]
         te_range  min  max  incr    [days]
         phi_range min  max  incr    [deg]
         v_range   min  max  incr    [mag]

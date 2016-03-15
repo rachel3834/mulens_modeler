@@ -37,10 +37,12 @@ class MicrolensingEvent():
         # but for events with parallax, u_o (observed) may be different
         self.u_o = None
         self.u_min = None
+        self.u_offset = None
         
         # Time of minimum projected separation of lens and source:
         self.t_o = None
-        	
+        self.t_o_jd = None
+        
         # Einstein crossing time, [d]:
         self.t_E = None
         	
@@ -106,6 +108,7 @@ class MicrolensingEvent():
         # projected into the lens plane
         self.t_c = None
         self.t_p = None
+        self.t_p_jd = None
         self.omega = None
         self.big_omega_o = ( 2.0 * np.pi ) / 365.25       # [rads day^-1] 
         self.omega_dt = None
@@ -141,10 +144,11 @@ class MicrolensingEvent():
                 str(self.phi) + ', M_L=' + str(ml) + 'Msol, D_L=' + \
                 str(dl) + 'pc'
         else:
-            uo = round( self.u_o, 1 )
+            uo = round( self.u_o, 3 )
+            uoffset = round( self.u_offset, 3 )
             output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
                 ', u_min=' + str(self.u_min) + ', u_o=' + str(uo) + \
-                ', rho=' + str(self.rho) + \
+                ', u_offset=' + str(uoffset) + ', rho=' + str(self.rho) + \
                 ', mag_base=' + str(self.mag_base) + ', phi=' + \
                 str(self.phi) + ', M_L=' + str(ml) + 'Msol, D_L=' + \
                 str(dl) + 'pc, R_E=' + str(self.R_E)
@@ -265,7 +269,8 @@ class MicrolensingEvent():
                 else:
                     factors = ( 1.0 / (np.pi*self.rho*self.rho) ) \
                                 * ( np.arcsin( self.rho / u ) / n )
-                                
+                    factors = factors.value
+                    
                     term1 = ( ( up * np.sqrt( up*up + 4.0 ) ) \
                              - ( udiff * np.sqrt( udiff*udiff + 4.0 ) ) ) \
                               / 3.0
@@ -284,9 +289,9 @@ class MicrolensingEvent():
                         f = calc_f( theta, u, self.rho )
                         term3 = term3 + f
                     term3 = term3 * (4.0/3.0)
-                      
+                    
                     A_t[j] = factors * ( term1 + term2 + term3 )
-                    if dbg == True:                    
+                    if dbg == True:
                         print 'u ('+str(u)+') > rho ('+str(self.rho)+\
                         ') A(t) = '+str(A_t[j])
                         print 'Factors: ',factors, term1, term2, term3
@@ -412,59 +417,61 @@ class MicrolensingEvent():
         
     ################################
     # CALCULATE PROJECTED OBSERVER POSITION
-    def calc_proj_observer_pos(self,parallax=False,satellite=False):
+    def calc_proj_observer_pos(self,parallax=False,satellite=False,debug=False):
         """Method to calculate the position of the observer projected 
         to the lens plane, factoring in both annual parallax and 
         satellite parallax."""
 	
-    	# By default, the observer is assumed to be at the centre of the 
+        # By default, the observer is assumed to be at the centre of the 
         # Earth, 1AU away from the Sun-source line:
         if parallax == False:
             r_obs = np.array( [ constants.au.value ] * len(self.t) )
 	
-    	# Including Earth's true orbital motion:
+        # Including Earth's true orbital motion:
         if parallax == True:
-    	    # Calculate the Earth's radius from the Sun during the event:
-    	    # Technically this currently assumes that Earth-bound observers 
-    	    # are at the centre of the planet
+            # Calculate the Earth's radius from the Sun during the event:
+            # Technically this currently assumes that Earth-bound observers 
+            # are at the centre of the planet
             self.calc_earth_orbit()
     	
-    	    # Radius of the observer from the centre of the Sun, factoring 
+            # Radius of the observer from the centre of the Sun, factoring 
             # in the orbit of the satellite if requested:
             r_obs = self.earth_helio_radius
 	
-    	# Including the additional altitude of a satellite orbiting the Earth:
+        # Including the additional altitude of a satellite orbiting the Earth:
         if satellite == True: 
             r_obs = r_obs.value + self.swift_orbit_radius + \
                      ( self.omega_swift * ( self.t - self.swift_t ) )
 	
-    	# Identify the time of closest approach of the observer to the 
-    	# Sun-source line:
+        # Identify the time of closest approach of the observer to the 
+        # Sun-source line:
         i = np.where( r_obs == r_obs.min() )
         self.t_c = self.t[i]
     	
-    	# Projecting this radius to the lens plane:
+        # Projecting this radius to the lens plane:
         self.alpha = ( r_obs * ( 1.0 - ( self.D_L / self.D_S ) ) ) \
                      / self.R_E
-    	#print 'alpha = ',self.alpha.min()
-          	#self.alpha = ( self.alpha * np.pi ) / 180.0
+        if debug == True:
+            print 'alpha = ',self.alpha.min()
             
-    	# Calculate omega = Einstein crossing time as an angular frequency 
+        # Calculate omega = Einstein crossing time as an angular frequency 
         # in units of days:
-        dt = self.t - self.t_o.jd
+        dt = self.t - self.t_o
         self.omega  = 1.0/ ( self.t_E.value / ( 60.0 * 60.0 * 24.0 ) )
         self.omega_dt = self.omega * dt
         self.omega_sq_dt_sq =  self.omega * self.omega * dt * dt
     	
-    	# Calculate Omega(t-tc) for all timestamps during the event:
+        # Calculate Omega(t-tc) for all timestamps during the event:
         dtc = self.t - self.t_c
-        dtp = self.t - self.t_p.jd
+        dtp = self.t - self.t_p
         self.big_omega_dtc = self.big_omega_o * dtc + 2.0 * \
                  earth_orbit_e * np.sin( self.big_omega_o * dtp )
-        #print 'OMEGA: ',(self.big_omega_o* dtc), self.t_c,self.t, earth_orbit_e, \
-        #       np.sin( self.big_omega_o * dtp ), self.big_omega_dtc
+        if debug == True:
+            print 'OMEGA: ',(self.big_omega_o* dtc), self.t_c,self.t, \
+                earth_orbit_e, np.sin( self.big_omega_o * dtp ), \
+                self.big_omega_dtc
                 
-    	# Factoring in the ecliptic latitude, beta, to arrive at the 
+        # Factoring in the ecliptic latitude, beta, to arrive at the 
         # projected observer location in the lens plane as a function 
         # of time during the event:
         self.calc_beta()
@@ -474,12 +481,24 @@ class MicrolensingEvent():
                      np.sin(self.big_omega_dtc)
         self.r_obs = np.sqrt( ( self.x_obs*self.x_obs ) + \
                     ( self.y_obs*self.y_obs ) )
-                    
+        imid = int(len(self.t)/2.0)
+        if debug == True:        
+            print 'X: ',self.alpha.value, (np.sin(self.beta)), \
+                (np.cos(self.big_omega_dtc)), self.x_obs, self.x_obs[imid]
+            print 'Y: ',self.alpha.value, (np.cos(self.beta)), \
+                (np.sin(self.big_omega_dtc)), self.y_obs, self.y_obs[imid]
+        
+        self.x_obs = self.x_obs - self.x_obs[imid] + ( np.sqrt(2.0) * self.u_offset )
+        self.y_obs = self.y_obs - self.y_obs[imid] + ( np.sqrt(2.0) * self.u_offset )
+        if debug = True:        
+            print 'Normalized obs position: ',self.x_obs, self.y_obs, \
+                    self.u_offset
+        
     ###############################
     # POINT-SOURCE, POINT-LENS
     
     # Calculate source-lens relative motion for a generic PSPL event:
-    def calc_source_lens_rel_motion(self):
+    def calc_source_lens_rel_motion(self, debug=False):
         """Method to calculate the source-lens relative motion for a 
         generic PSPL event"""
         
@@ -499,12 +518,22 @@ class MicrolensingEvent():
     	
     	# Calculate the time-dependent position of the lens relative 
     	# to the source in the lens plane in units of the Einstein radius:
-        x_incr = ( 1.0 + 1.0 )/len(self.t)
-        self.x_lens = np.arange(-1.0,1.0,x_incr)
-        self.y_lens = ( self.x_lens * np.tan(self.phi) ) + \
-                 ( self.u_min * np.cos(self.phi) )
+        #x_incr = ( 1.0 + 1.0 )/len(self.t)
+        #self.x_lens = np.arange(-1.0,1.0,x_incr)
+        #self.y_lens = ( self.x_lens * np.tan(self.phi) ) + \
+        #         ( self.u_min * np.cos(self.phi) )
+        #self.r_lens = np.sqrt(self.x_lens*self.x_lens + \
+        #         self.y_lens*self.y_lens)
+                 
+        self.x_lens = ( -1.0 * self.u_min * np.sin(self.phi) ) + \
+                        ( self.v_SL_dx * ( self.t - self.t_o ) )
+        self.y_lens = ( self.u_min * np.cos(self.phi) ) + \
+                        ( self.v_SL_dy * (self.t - self.t_o ) )
         self.r_lens = np.sqrt(self.x_lens*self.x_lens + \
                  self.y_lens*self.y_lens)
+        if debug == True:
+            print 'X_Lens: ',self.x_lens
+            print 'Y_Lens: ',self.y_lens
         
     ################################
     # EVENT TIMELINE
@@ -515,7 +544,7 @@ class MicrolensingEvent():
         Optional argument:
             cadence float [mins]
         """
-	
+ 
         # Compute the start and end times of the event, note these are in 
         # UTC format:
         # Plots extend to +/- 2 * t_E by default, or this can be fixed
@@ -524,9 +553,13 @@ class MicrolensingEvent():
         else:
             half_lc = TimeDelta( ( (lc_length*60.0*60.0*24.0) / 2.0 ), 
                                         format='sec' )
+        
+        # Store the Time version of t_o in JD for future reference:
+        if self.t_o_jd == None:
+            self.t_o_jd = self.t_o
+        event_start = self.t_o_jd - half_lc
+        event_end = self.t_o_jd + half_lc
             
-        event_start = self.t_o-half_lc
-        event_end = self.t_o+half_lc
         if cadence == None:
             t_incr = TimeDelta( ( self.t_E.value / 5000.0 ) , format='sec')
         else:
@@ -544,45 +577,63 @@ class MicrolensingEvent():
         while t <= event_end:
             t = t + t_incr
             jd.append( t.jd )
-            if debug == True:
-                print 'TIME JD: ',t, t.jd
-                
-            # Calculate the MJD (UTC) timestamp:
-            mjd_utc = t.jd - 2400000.5
-            if debug == True:
-                print 'TIME MJD_UTC: ',mjd_utc
-            
-            # Correct the MJD to TT:
-            mjd_tt = timesubs.mjd_utc2mjd_tt(mjd_utc)
-            if debug == True:
-                print 'TIME MJD_TT: ',mjd_tt, t.tt.jd
-            
-            # Calculate Earth's position and velocity, both heliocentric
-            # and barycentric for this date
-            (earth_helio_position, vh, pb, vb) = slalib.sla_epv( mjd_tt )
-            if debug == True:
-                print 'Earth Cartesian position: ',earth_helio_position
-                print 'Target cartesian position: ', target_position
-            
-            # Calculate the light travel time delay from the target to 
-            # the Sun:
-            dv = slalib.sla_dvdv( earth_helio_position, target_position )            
-            tcorr = dv * ( constants.au.value / constants.c.value )
-            
-            if debug == True:
-                print 'TIME tcorr: ', tcorr, 's', (tcorr/60.0),'mins'
-            
-            # Calculating the HJD:
-            hjd = mjd_tt + tcorr/86400.0 + 2400000.5
-            if debug == True:
-                print 'TIME HJD: ',hjd,'\n'
-    
+            hjd = self.jd_to_hjd(t, target_position, debug=debug)
             ts.append(hjd)
         
         self.t = np.array(ts)
         self.ts_jd = np.array(jd)
+        #print 'TO (JD) = ',self.t_o.jd
+        self.t_o = self.jd_to_hjd(self.t_o_jd, target_position, debug=debug)
+        #print 'TO (HJD) = ',self.t_o
+    
+        #print 'T_P (JD) = ',self.t_p.jd
+        if self.t_p_jd == None:
+            self.t_p_jd = self.t_p
+            
+        self.t_p = self.jd_to_hjd(self.t_p_jd, target_position, debug=debug)
+        #print 'T_P (HJD) = ',self.t_p
+            
+    
+    def jd_to_hjd(self, t, target_position, debug=False):
+        """Calculate the HJD timestamp corresponding to the JD given for the
+        current event"""
         
-    	
+        if debug == True:
+            print 'TIME JD: ',t, t.jd
+            
+        # Calculate the MJD (UTC) timestamp:
+        mjd_utc = t.jd - 2400000.5
+        if debug == True:
+            print 'TIME MJD_UTC: ',mjd_utc
+        
+        # Correct the MJD to TT:
+        mjd_tt = timesubs.mjd_utc2mjd_tt(mjd_utc)
+        if debug == True:
+            print 'TIME MJD_TT: ',mjd_tt, t.tt.jd
+        
+        # Calculate Earth's position and velocity, both heliocentric
+        # and barycentric for this date
+        (earth_helio_position, vh, pb, vb) = slalib.sla_epv( mjd_tt )
+        if debug == True:
+            print 'Earth Cartesian position: ',earth_helio_position
+            print 'Target cartesian position: ', target_position
+        
+        # Calculate the light travel time delay from the target to 
+        # the Sun:
+        dv = slalib.sla_dvdv( earth_helio_position, target_position )            
+        tcorr = dv * ( constants.au.value / constants.c.value )
+        
+        if debug == True:
+            print 'TIME tcorr: ', tcorr, 's', (tcorr/60.0),'mins'
+        
+        # Calculating the HJD:
+        hjd = mjd_tt + tcorr/86400.0 + 2400000.5
+        if debug == True:
+            print 'TIME HJD: ',hjd,'\n'
+
+        return hjd
+    
+    
     def calc_static_observer_impact_param(self):
         """Method to plot (and calculate if necessary) the point-source, 
         	point-lens lightcurve to file."""
@@ -618,40 +669,47 @@ class MicrolensingEvent():
         ApJ, 483, 782.
         """
         dbg = False
-   
+        method = 'offset'
+        
     	# Pre-calculate some repeated factors for convenience and speed:
         alpha_sq = self.alpha.value * self.alpha.value
 	
     	# Calculate impact parameter as a function of time:
         # The projected separation of lens-source from the observer's 
         # perspective. 
-        term1 =  self.u_min*self.u_min
-        term2 = self.omega_sq_dt_sq
-        term3 = alpha_sq * ( np.sin( self.big_omega_dtc ) )**2 
-        term4 = alpha_sq * ( ( np.sin( self.beta.value ) )**2 ) * \
-                    ( ( np.cos(self.big_omega_dtc) )**2 ) 
-        term5 = -2.0 * self.alpha.value * np.sin(self.big_omega_dtc) * \
-                         ( self.omega_dt * np.sin(self.phi) + \
-                             self.u_min * np.cos(self.phi) ) 
-        term6 = 2.0 * self.alpha.value * np.sin(self.beta.value) * \
-                     np.cos(self.big_omega_dtc) * \
-                     ( self.u_min * np.sin(self.phi) - self.omega_dt * \
-                     np.cos(self.phi) )
-    
-        usq_t = term1 + term2 + term3 + term4 + term5 + term6
-    	
-    	# Print these terms at t_o?  Or find when they are all minimised? 
-        # Term 3 largest at t=t_o
-        if dbg == True:
-            print 'u(t)^2 terms: ',term1, \
-    	      	      	term2[0], \
-    			term3[0], \
-    			term4[0], \
-    			term5[0],\
-    			term6[0], \
-                   alpha_sq, ( np.sin( self.beta.value ) )**2, \
-                   ( np.cos(self.big_omega_dtc) )**2
-    	
+        if method=='first_principles':
+            term1 =  self.u_min*self.u_min
+            term2 = self.omega_sq_dt_sq
+            term3 = alpha_sq * ( np.sin( self.big_omega_dtc ) )**2 
+            term4 = alpha_sq * ( ( np.sin( self.beta.value ) )**2 ) * \
+                        ( ( np.cos(self.big_omega_dtc) )**2 ) 
+            term5 = -2.0 * self.alpha.value * np.sin(self.big_omega_dtc) * \
+                             ( self.omega_dt * np.sin(self.phi) + \
+                                 self.u_min * np.cos(self.phi) ) 
+            term6 = 2.0 * self.alpha.value * np.sin(self.beta.value) * \
+                         np.cos(self.big_omega_dtc) * \
+                         ( self.u_min * np.sin(self.phi) - self.omega_dt * \
+                         np.cos(self.phi) )
+        
+            usq_t = term1 + term2 + term3 + term4 + term5 + term6
+        	
+        	# Print these terms at t_o?  Or find when they are all minimised? 
+            # Term 3 largest at t=t_o
+            if dbg == True:
+                print 'u(t)^2 terms: ',term1, \
+        	      	      	term2[0], \
+        			term3[0], \
+        			term4[0], \
+        			term5[0],\
+        			term6[0], \
+                       alpha_sq, ( np.sin( self.beta.value ) )**2, \
+                       ( np.cos(self.big_omega_dtc) )**2
+        
+        else:
+            dx = self.x_lens - self.x_obs
+            dy = self.y_lens - self.y_obs
+            usq_t = dx*dx + dy*dy
+        
     	#dx = self.x_lens - self.x_obs
     	#dy = self.y_lens - self.y_obs
     	
@@ -887,7 +945,7 @@ class MicrolensingEvent():
          # Plot the trajectory of the observer in the lens plane during 
         # the event:
         plt.plot(self.x_obs,self.y_obs,'b-')
-	
+        
         plt.xlabel('x [R$_{E}$]', fontsize=18)
         plt.ylabel('y [R$_{E}$]', fontsize=18)
         (x_E, y_E) = circle(1.0)      # Plot in units of the Einstein radius
@@ -902,9 +960,9 @@ class MicrolensingEvent():
         ax = fig.add_axes([0.1, 0.05, 0.85, 0.2])   #  [left, bottom, width, height]
         plt.plot(self.t-2450000.0,(self.y_lens),'r-')
         plt.plot(self.t-2450000.0,(self.y_obs),'b-')
-        plt.plot(np.array( [self.t_o.jd-2450000.0]*2 ), \
+        plt.plot(np.array( [self.t_o-2450000.0]*2 ), \
                          np.array([-2.0,2.0]),'r-.')
-        plt.xlabel('JD-2450000.0', fontsize=18) 				     
+        plt.xlabel('HJD-2450000.0', fontsize=18) 				     
         plt.ylabel('y$_{lens}$ [R$_{E}$]', fontsize=18) 
         ax.yaxis.grid() #vertical lines
         ax.xaxis.grid() #horizontal lines		    
