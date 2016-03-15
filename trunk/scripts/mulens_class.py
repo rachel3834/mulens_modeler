@@ -490,7 +490,7 @@ class MicrolensingEvent():
         
         self.x_obs = self.x_obs - self.x_obs[imid] + ( np.sqrt(2.0) * self.u_offset )
         self.y_obs = self.y_obs - self.y_obs[imid] + ( np.sqrt(2.0) * self.u_offset )
-        if debug = True:        
+        if debug == True:        
             print 'Normalized obs position: ',self.x_obs, self.y_obs, \
                     self.u_offset
         
