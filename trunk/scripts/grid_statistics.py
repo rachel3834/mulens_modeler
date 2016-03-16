@@ -129,6 +129,9 @@ def calc_dchi2( earth_lc, earth_model, swift_lc, swift_model ):
     # Compute chi2 of the Swift lightcurve with its model:
     swift_chi2 = calc_chi2( swift_model, swift_lc, idx )
 
+    # Identify the timestamps in common between the Swift and Earth 
+    # lightcurves.  As the Swift lightcurve is the least sampled this
+    # selects the same datapoints as for the chi2 test above. 
     idx = common_ts( earth_lc, swift_lc )
     swift_earth_chi2 = calc_chi2( earth_lc, swift_lc, idx )
     
@@ -138,9 +141,7 @@ def calc_dchi2( earth_lc, earth_model, swift_lc, swift_model ):
 def calc_chi2( lc1, lc2, idx, use_err1=False, debug=False ):
     """Calculate chi2 between lightcurves, where idx is an array giving
     the common timestamps"""
-    
-    print len(lc1), len(lc2), len(lc1[idx,1])
-    
+        
     merr2 = lc2[:,2]
     if use_err1 == True:
         merr1 = lc1[idx,2]
