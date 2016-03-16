@@ -94,7 +94,8 @@ def grid_locale_stats( grid_dir ):
         
         print gp.summary()
         output.write( gp.summary() + '\n' )
-    
+        output.flush()
+        
     output.close()
     
 def read_lc_file( lc_file, model=False ):
