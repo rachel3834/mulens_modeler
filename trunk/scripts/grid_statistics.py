@@ -28,7 +28,9 @@ class GridPoint:
         self.red_chi2 = None
         self.dchi2 = None
         self.n_pts = None
-
+        self.ml = None
+        self.dl = None
+        
     def set_par_from_file( self, file_name ):
         """Method to set the parameters of the grid point from the filename
         of the model output"""
@@ -66,7 +68,7 @@ def grid_locale_stats( grid_dir ):
     # Open output file:
     output_file = path.join( grid_dir, 'grid_locale_stats.dat' )
     output = open(output_file, 'w')    
-    output.write('# u0     tE      phi    mag_base   rho  ML      DL    dchi_sq \n')
+    output.write('# u0     tE[d]    phi[rads]   mag_base[mag]   rho  ML[MSun]    DL[pc]   dchi_sq \n')
     
     # Loop over each file, recording the computed difference statistic between
     # the Earth- and Swift-lightcurves for the same grid point model.
