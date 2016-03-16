@@ -39,13 +39,16 @@ class GridPoint:
         self.phi = float( pars[3] )
         self.mag_base = float( pars[4] )
         self.rho = float( pars[5] )        
-    
+        self.ml = float( pars[6] )
+        self.dl = float( pars[7] )
+        
     def summary( self ):
         """Method to output a summary of all grid-point parameters as a string"""
         
         line = str( self.u0 ) + ' ' + str( self.te ) + ' ' + \
                 str( self.phi ) + ' ' + \
                 str( self.mag_base ) + ' ' + str( self.rho ) + ' ' + \
+                str( self.ml ) + ' ' + str( self.dl ) + ' ' + \
                 str( self.dchi2 ) 
         return line
         
@@ -63,7 +66,7 @@ def grid_locale_stats( grid_dir ):
     # Open output file:
     output_file = path.join( grid_dir, 'grid_locale_stats.dat' )
     output = open(output_file, 'w')    
-    output.write('# u0     tE      phi    mag_base   rho  dchi_sq \n')
+    output.write('# u0     tE      phi    mag_base   rho  ML      DL    dchi_sq \n')
     
     # Loop over each file, recording the computed difference statistic between
     # the Earth- and Swift-lightcurves for the same grid point model.
