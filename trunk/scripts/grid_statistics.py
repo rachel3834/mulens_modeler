@@ -139,7 +139,7 @@ def calc_dchi2( earth_lc, earth_model, swift_lc, swift_model ):
     # lightcurves.  As the Swift lightcurve is the least sampled this
     # selects the same datapoints as for the chi2 test above. 
     idx = common_ts( earth_lc, swift_lc )
-    swift_earth_chi2 = calc_chi2( earth_lc, swift_lc, idx )
+    swift_earth_chi2 = calc_chi2( earth_lc, swift_lc, idx, use_err1=True )
     
     dchi2 = swift_chi2 - swift_earth_chi2
     return dchi2
