@@ -19,7 +19,7 @@ from os import path
 def grid_checker( params ):
 
     grid = construct_grid( params )
-    n_grid = str(len(grid))
+    n_grid = len(grid)
     
     n_output = len( glob.glob( path.join( params['data_dir'], '*_earth.dat' ) ) )
     
