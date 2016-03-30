@@ -144,8 +144,8 @@ class MicrolensingEvent():
                 str(self.phi) + ', M_L=' + str(ml) + 'Msol, D_L=' + \
                 str(dl) + 'pc'
         else:
-            uo = round( self.u_o, 3 )
-            uoffset = round( self.u_offset, 3 )
+            uo = round( self.u_o, 6 )
+            uoffset = round( self.u_offset, 6 )
             output = 't_E=' + str(self.t_E/(60.0*60.0*24.0)) + 'd, t_0=' + str(self.t_o) + \
                 ', u_min=' + str(self.u_min) + ', u_o=' + str(uo) + \
                 ', u_offset=' + str(uoffset) + ', rho=' + str(self.rho) + \
