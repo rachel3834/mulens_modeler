@@ -62,7 +62,7 @@ def simulate_grid_models( params ):
         
         log.info( 'Computing for grid point parameters (' + str(g+1) + \
                 ' out of ' + n_grid + '):' )
-        log.info( '-> ' + event.summary() )
+        log.info( '-> ' + event.summary(inc_uo=True) )
         log.info( '-> Time of Earth perihelion for event year: ' + event.t_p.value )
         
         # Compute lens essential parameters, initially with a uniform cadence

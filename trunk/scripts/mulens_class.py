@@ -162,7 +162,7 @@ class MicrolensingEvent():
         te = round( te, 1 )
         phi = round( self.phi, 3 )
         mag = round( self.mag_base, 1 )
-        uo = round( self.u_o, 4 )
+        uo = round( self.u_o, 6 )
         ml = round( self.M_L.value/constants.M_sun.value, 6 )
         dl = round( self.D_L.value/constants.pc.value, 4 )
         #except TypeError:
@@ -783,10 +783,9 @@ class MicrolensingEvent():
                 ts.append( t )
                 mag_mean = self.mag_base - 2.5 * np.log10( A_t[i] ) 
                 merr_est = self.sim_mag_error( exp_time, mag_mean, phot_precision ) 
-                mag.append( np.random.normal( mag_mean, merr_est/2.0 ) )
+                mag.append( np.random.normal( mag_mean, merr_est ) )
                 merr.append( self.sim_mag_error( exp_time, mag[-1], phot_precision ) )
                 
-                    
             if t >= obs_end:
                 if window != None:
                     obs_start = obs_end + interval
