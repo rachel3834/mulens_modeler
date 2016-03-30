@@ -25,6 +25,8 @@ class GridPoint:
         self.rho = None
         self.mag_base = None
         self.chi2 = None
+        self.earth_chi2 = None
+        self.swift_earth_chi2 = None
         self.red_chi2 = None
         self.dchi2 = None
         self.n_pts = None
@@ -51,7 +53,8 @@ class GridPoint:
                 str( self.phi ) + ' ' + \
                 str( self.mag_base ) + ' ' + str( self.rho ) + ' ' + \
                 str( self.ml ) + ' ' + str( self.dl ) + ' ' + \
-                str( self.dchi2 ) 
+                str( self.dchi2 ) + ' ' + str( self.swift_chi2 ) + ' ' + \
+                str( self.swift_earth_chi2 )
         return line
         
 def grid_locale_stats( grid_dir ):
@@ -68,7 +71,7 @@ def grid_locale_stats( grid_dir ):
     # Open output file:
     output_file = path.join( grid_dir, 'grid_locale_stats.dat' )
     output = open(output_file, 'w')    
-    output.write('# u0     tE[d]    phi[rads]   mag_base[mag]   rho  ML[MSun]    DL[pc]   dchi_sq \n')
+    output.write('# u0     tE[d]    phi[rads]   mag_base[mag]   rho  ML[MSun]    DL[pc]   dchi_sq  swift_chi2 swift-earth_chi2\n')
     
     # Loop over each file, recording the computed difference statistic between
     # the Earth- and Swift-lightcurves for the same grid point model.
@@ -90,7 +93,8 @@ def grid_locale_stats( grid_dir ):
         
         #( gp.chi2, gp.red_chi2, gp.n_pts ) = diff_lcs( earth_data, swift_data )
         
-        gp.dchi2 = calc_dchi2( earth_data, earth_model, swift_data, swift_model )
+        (gp.dchi2, gp.swift_chi2, gp.swift_earth_chi2) = \
+            calc_dchi2( earth_data, earth_model, swift_data, swift_model )
         
         print gp.summary()
         output.write( gp.summary() + '\n' )
@@ -138,11 +142,11 @@ def calc_dchi2( earth_lc, earth_model, swift_lc, swift_model ):
     # Identify the timestamps in common between the Swift and Earth 
     # lightcurves.  As the Swift lightcurve is the least sampled this
     # selects the same datapoints as for the chi2 test above. 
-    idx = common_ts( earth_lc, swift_lc )
-    swift_earth_chi2 = calc_chi2( earth_lc, swift_lc, idx, use_err1=True )
+    idx = common_ts( earth_model, swift_lc )
+    swift_earth_chi2 = calc_chi2( earth_model, swift_lc, idx )
     
     dchi2 = swift_chi2 - swift_earth_chi2
-    return dchi2
+    return dchi2, swift_chi2, swift_earth_chi2
 
 def calc_chi2( lc1, lc2, idx, use_err1=False, debug=False ):
     """Calculate chi2 between lightcurves, where idx is an array giving
