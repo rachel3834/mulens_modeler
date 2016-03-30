@@ -8,7 +8,9 @@ Created on Wed Mar 30 03:17:37 2016
 import glob
 import numpy as np
 import swift_grid_simulator
-from sys import argv
+from sys import argv, exit
+from astropy import constants
+from os import path
 
 ##############################################################################
 #               SWIFT GRID CHECKER
@@ -18,24 +20,28 @@ def grid_checker( params ):
 
     grid = construct_grid( params )
     n_grid = str(len(grid))
-
-    uvalues = np.array( params['uofflist_list'] )
     
-    fileobj = open('grid_locale.dat','w')
+    uvalues = np.array( params['uoffset_list'] )
+    nu = len(params['uoffset_list'])
     
+    fileobj = open(path.join(params['data_dir'],'grid_locale.dat'),'w')
+    fileobj.write('# u_0  t_E  phi  mag  rho  M_L  D_L  file_name\n')
     for g, grid_point in enumerate(grid):
         
         root_name = file_search_string( grid_point )
+        par_string = root_name.replace('lc_*_','').replace('_earth.dat','').replace('_',' ')
         
-        file_list = glob.glob( root_name )
+        file_list = glob.glob( path.join(params['data_dir'],root_name) )
         file_list.sort()
         
-        if len(file_list) == 4:
-            for i,u in enumerate(params['uofflist_list']):
-                fileobj.write(str(u) + ' ' + file_list[i] + '\n')
+        if len(file_list) == nu:
+            for i,u in enumerate(params['uoffset_list']):
+                fileobj.write(str(u) + ' ' + par_string + ' ' + \
+                        file_list[i] + '\n')
         else:
-            for i,u in enumerate(params['uofflist_list']):
-                fileobj.write(str(u) + ' ERROR: Missing output\n')
+            for i,u in enumerate(params['uoffset_list']):
+                fileobj.write(str(u) + ' ' + par_string + ' ' + \
+                        ' ERROR: Missing output\n')
             
     fileobj.close()
   
@@ -43,17 +49,17 @@ def file_search_string( grid_point ):
     """Method to return a string summarizing the basic FSPL parameters
     for use as a root file name"""
     
-    te = grid_point[3] / ( 60.0 * 60.0 * 24.0 )   
+    te = grid_point[2]
     te = round( te, 1 )
-    phi = round( grid_point[4], 3 )
-    mag = round( grid_point[5], 1 )
-    ml = round( grid_point[0]/constants.M_sun.value, 6 )
-    dl = round( grid_point[1]/constants.pc.value, 4 )
-    #except TypeError:
-    #    uo = round( self.u_min, 4 )
+    phi = round( grid_point[3], 3 )
+    mag = round( grid_point[4], 1 )
+    ml = round( grid_point[0], 6 )
+    dl = round( grid_point[1], 4 )
+    rho = grid_point[5]
+    
     file_name = 'lc_*_' + str(te) + \
                     '_' + str(phi) + '_' + str(mag) +\
-                    '_' + str(self.rho) + '_' + str(ml) +\
+                    '_' + str(rho) + '_' + str(ml) +\
                     '_' + str(dl) + '_earth.dat'
     return file_name
 
@@ -96,4 +102,5 @@ if __name__ == '__main__':
     else:
         file_path = argv[1]
         params = swift_grid_simulator.parse_input_file( file_path )
+        params['data_dir'] = path.dirname(file_path)
         grid_checker( params )
