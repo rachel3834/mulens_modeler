@@ -82,7 +82,7 @@ def construct_grid( params ):
                 for phi in np.arange( phimin, phimax, phiincr ):
                     for Vbase in np.arange( vmin, vmax, vincr ):
                         for rho in np.arange( rhomin, rhomax, rhoincr ):
-                            grid.append( [ml,dl,um,te,phi,Vbase,rho] )
+                            grid.append( [ml,dl,te,phi,Vbase,rho] )
     return grid
 
 #############################################
