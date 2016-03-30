@@ -24,7 +24,7 @@ def grid_checker( params ):
     n_output = len( glob.glob( path.join( params['data_dir'], '*_earth.dat' ) ) )
     
     print 'Expecting ' + str(n_grid) + ' grid points, found output for ' + str(n_output)
-    print 'Missing ' + str( n_grid - noutput ) + ' files'    
+    print 'Missing ' + str( n_grid - n_output ) + ' files'    
     
     uvalues = np.array( params['uoffset_list'] )
     nu = len(params['uoffset_list'])
