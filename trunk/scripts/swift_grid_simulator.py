@@ -62,7 +62,6 @@ def simulate_grid_models( params ):
         
         log.info( 'Computing for grid point parameters (' + str(g+1) + \
                 ' out of ' + n_grid + '):' )
-        log.info( '-> ' + event.summary(inc_uo=True) )
         log.info( '-> Time of Earth perihelion for event year: ' + event.t_p.value )
         
         # Compute lens essential parameters, initially with a uniform cadence
@@ -77,7 +76,7 @@ def simulate_grid_models( params ):
         event.calc_source_lens_rel_motion()
         event.calc_proj_observer_pos(parallax=True,satellite=False)
         event.calc_parallax_impact_param(set_uo=True)
-        log.info(' -> u_o = ' + str(event.u_o) )
+        log.info( '-> ' + event.summary(inc_uo=True) )
         log.info( '-> built lensing event object' )
         
         # Continue if this is a high-mag event as seen from Earth:
