@@ -18,16 +18,16 @@ from os import path
 
 def grid_checker( params ):
 
+    uvalues = np.array( params['uoffset_list'] )
+    nu = len(params['uoffset_list'])
+    
     grid = construct_grid( params )
-    n_grid = len(grid)
+    n_grid = len(grid) * nu
     
     n_output = len( glob.glob( path.join( params['data_dir'], '*_earth.dat' ) ) )
     
     print 'Expecting ' + str(n_grid) + ' grid points, found output for ' + str(n_output)
     print 'Missing ' + str( n_grid - n_output ) + ' files'    
-    
-    uvalues = np.array( params['uoffset_list'] )
-    nu = len(params['uoffset_list'])
     
     fileobj = open(path.join(params['data_dir'],'grid_locale.dat'),'w')
     fileobj.write('# u_0  t_E  phi  mag  rho  M_L  D_L  file_name\n')
