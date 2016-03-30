@@ -15,6 +15,7 @@ from os import path
 from sys import exit, argv
 import numpy as np
 import mulens_class
+import glob
 
 def process_grid_locale( data_dir ):
     """Function to loop over all Swift models in a given directory"""
