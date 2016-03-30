@@ -8,6 +8,7 @@ Created on Wed Mar 30 03:17:37 2016
 import glob
 import numpy as np
 import swift_grid_simulator
+from sys import argv
 
 ##############################################################################
 #               SWIFT GRID CHECKER
