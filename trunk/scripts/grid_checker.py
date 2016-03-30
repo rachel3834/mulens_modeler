@@ -31,7 +31,7 @@ def grid_checker( params ):
         
         if len(file_list) == 4:
             for i,u in enumerate(params['uofflist_list']):
-                fileobj.write(str(u) + ' ' + file_list[i]) + '\n')
+                fileobj.write(str(u) + ' ' + file_list[i] + '\n')
         else:
             for i,u in enumerate(params['uofflist_list']):
                 fileobj.write(str(u) + ' ERROR: Missing output\n')
