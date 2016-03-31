@@ -154,22 +154,31 @@ class MicrolensingEvent():
                 str(dl) + 'pc, R_E=' + str(self.R_E)
         return output
     
-    def root_file_name( self ):
+    def root_file_name( self, params=None ):
         """Method to return a string summarizing the basic FSPL parameters
         for use as a root file name"""
         
-        te = self.t_E.value / ( 60.0 * 60.0 * 24.0 )   
-        te = round( te, 1 )
-        phi = round( self.phi, 3 )
-        mag = round( self.mag_base, 1 )
-        uo = round( self.u_o, 6 )
-        ml = round( self.M_L.value/constants.M_sun.value, 6 )
-        dl = round( self.D_L.value/constants.pc.value, 4 )
-        #except TypeError:
-        #    uo = round( self.u_min, 4 )
+        if params == None:
+            te = self.t_E.value / ( 60.0 * 60.0 * 24.0 )   
+            te = round( te, 1 )
+            phi = round( self.phi, 3 )
+            mag = round( self.mag_base, 1 )
+            uo = round( self.u_o, 6 )
+            ml = round( self.M_L.value/constants.M_sun.value, 6 )
+            dl = round( self.D_L.value/constants.pc.value, 4 )
+            rho = round( self.rho, 3 )
+        else:
+            te = round( float(params['te']),1 )
+            phi = round( float(params['phi']), 3 )
+            mag = round( float(params['mag_base']),1 )
+            uo = round( float(params['uo']), 6 )
+            ml = round( float(params['ml']), 6 )
+            dl = round( float(params['dl']), 4 )
+            rho = round( float(params['rho']), 3 )
+            
         file_name = 'lc_' + str(uo) + '_' + str(te) + \
                         '_' + str(phi) + '_' + str(mag) +\
-                        '_' + str(self.rho) + '_' + str(ml) +\
+                        '_' + str(rho) + '_' + str(ml) +\
                         '_' + str(dl)
         return file_name
         

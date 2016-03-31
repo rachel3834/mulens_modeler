@@ -40,8 +40,9 @@ def simulate_grid_models( params ):
     log = log_utilities.start_day_log( params, 'grid_sim' )
     log.info( 'Starting grid simulation' )
     
-    grid = construct_grid( params )
+    grid = construct_grid( params, log )
     n_grid = str(len(grid))
+    log.info( 'Processing grid of ' + n_grid + ' grid points' )
 
     # Grid point parameter list: [ml,dl,um,te,phi,Vbase,rho]
     for g, grid_point in enumerate(grid):
@@ -150,7 +151,7 @@ def simulate_grid_models( params ):
     
     log_utilities.end_day_log( log )
     
-def construct_grid( params ):
+def construct_grid( params, log ):
     """Function to return a list of gridpoints.  Each list entry consists
     of a list of grid parameters:
     [u0, tE, phi, Vbas, rho]
@@ -176,8 +177,31 @@ def construct_grid( params ):
                     for Vbase in np.arange( vmin, vmax, vincr ):
                         for rho in np.arange( rhomin, rhomax, rhoincr ):
                             for um in uoffset_list:
-                                grid.append( [ml,dl,um,te,phi,Vbase,rho] )
+                                model_pars = [ml,dl,um,te,phi,Vbase,rho]
+                                if params['fill_grid'] == False:
+                                    grid.append( model_pars )
+                                else:
+                                    if check_for_output( params, model_pars ) == False:
+                                        grid.append( model_pars )
+                                        log.info( 'Located missing grid point ' + \
+                                            repr(model_pars) + ', adding to list' )
     return grid
+
+def check_for_output( params, model_pars ):
+    """Function to check whether existing output is present for the given
+    set of model parameters"""
+    event = mulens_class.MicrolensingEvent()
+    pars = { 'te': model_pars[3], 'phi': model_pars[4], 'mag_base': model_pars[5],\
+            'uo': model_pars[2], 'ml': model_pars[0], 'dl': model_pars[1], \
+            'rho': model_pars[6] }
+    file_name = event.root_file_name( params=pars )
+    search_path = 'lc_*_' + '_'.join( file_name.split('_')[2:] ) + '_earth.dat'
+    search_path = path.join( params['output_path'], search_path )
+    file_list = glob.glob( search_path )
+    if len(file_list) < len(params['uoffset_list']):
+        return False
+    else:
+        return True
 
 def parse_input_file( file_path ):
     """Function to parse the input file of simulation parameters into a 
@@ -226,11 +250,15 @@ def parse_input_file( file_path ):
 # COMMANDLINE RUN SECTION
 if __name__ == '__main__':
     
+    fill_grid = False
     if len(argv) == 1:
         print """Call sequence:
-                python swift_grid_simulation.py [parameter_file]
+                python swift_grid_simulation.py [parameter_file] [-fill-grid]
               """
     else:
         file_path = argv[1]
+        if len(argv) == 3:
+            fill_grid = True
         params = parse_input_file( file_path )
+        params['fill_grid'] = fill_grid
         simulate_grid_models( params )
