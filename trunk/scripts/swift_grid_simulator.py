@@ -191,7 +191,8 @@ def check_for_output( params, model_pars ):
     """Function to check whether existing output is present for the given
     set of model parameters"""
     event = mulens_class.MicrolensingEvent()
-    pars = { 'te': model_pars[3], 'phi': model_pars[4], 'mag_base': model_pars[5],\
+    phi = (float( model_pars[4] )*np.pi) / 180.0
+    pars = { 'te': model_pars[3], 'phi': phi, 'mag_base': model_pars[5],\
             'uo': model_pars[2], 'ml': model_pars[0], 'dl': model_pars[1], \
             'rho': model_pars[6] }
     file_name = event.root_file_name( params=pars )
