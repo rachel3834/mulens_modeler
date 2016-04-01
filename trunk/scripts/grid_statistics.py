@@ -97,7 +97,8 @@ def grid_locale_stats( grid_dir ):
             calc_dchi2( earth_data, earth_model, swift_data, swift_model )
         
         print gp.summary()
-        output.write( gp.summary() + '\n' )
+        file_name = path.basename( earth_lc_file ).replace('_earth.dat','')
+        output.write( gp.summary() + ' ' + file_name + '\n' )
         output.flush()
         
     output.close()
