@@ -43,7 +43,8 @@ def simulate_grid_models( params ):
     grid = construct_grid( params, log )
     n_grid = str(len(grid))
     log.info( 'Processing grid of ' + n_grid + ' grid points' )
-
+    par_grid = start_par_grid_log( params )
+    
     # Grid point parameter list: [ml,dl,um,te,phi,Vbase,rho]
     for g, grid_point in enumerate(grid):
         event = mulens_class.MicrolensingEvent()
@@ -84,23 +85,22 @@ def simulate_grid_models( params ):
         log.info( '-> ' + event.summary(inc_uo=True) )
         log.info( '-> built lensing event object' )
         
-        # Continue if this is a high-mag event as seen from Earth:
-        #if event.u_o < 0.01:
-        
         # Re-generate the event time line etc using the cadence
         # requested for the Earth-based lightcurve:
         event.gen_event_timeline(cadence=params['cadence'], \
-                                    lc_length=params['lc_length'])
+                                    lc_length=params['lc_length'])                                
         event.calc_source_lens_rel_motion()
         event.calc_proj_observer_pos(parallax=True,satellite=False)
         event.calc_parallax_impact_param()
         log.info( '-> generated the event timeline with observing cadence' )
+        #event.plot_lens_plane_motion(params)
         
         # For ease of handling later, a copy of the basic event
         # is taken and will be used to compute the same event
         # as seen from Swift:
         swift_event = copy.copy( event )
-        log.info( '-> copied to Swift event object' )
+        swift_event_force_obs = copy.copy( event )
+        log.info( '-> copied to Swift event objects' )
         
         # Ground-based observer:        
         # Calculate the model lightcurve and datapoints for an FSPL 
@@ -115,40 +115,69 @@ def simulate_grid_models( params ):
         event.simulate_data_points(model='fspl', phot_precision='1m')
         log.info( '-> Simulated ground-based model and data' )
         
-        # Swift observer: 
+        # Swift observer - coincident observation timing: 
         swift_event.swift_t = event.t[0]
-        swift_event.calc_proj_observer_pos(parallax=True,satellite=True)
+        swift_event.calc_proj_observer_pos(parallax=True,satellite=True,debug=True)
         log.info( '-> calculated the projected observer position' )
         swift_event.calc_parallax_impact_param()
         log.info( '-> calculated the PSPL impact parameter' )
         swift_event.calc_magnification(model='fspl')
         log.info( '-> calculated the magnification as a function of time' )
         swift_event.simulate_data_points(model='fspl', \
-                            phot_precision='swift', window=0.83, interval=1.6)
+                            phot_precision='swift', window=0.83, interval=1.6,log=log)
         log.info( '-> Simulated Swift model and data' )
+        
+        # Swift observer - forced observations around the peak: 
+        swift_event_force_obs.swift_t = event.t[0]
+        swift_event_force_obs.calc_proj_observer_pos(parallax=True,satellite=True)
+        log.info( '-> calculated the projected observer position' )
+        swift_event_force_obs.calc_parallax_impact_param()
+        log.info( '-> calculated the PSPL impact parameter' )
+        swift_event_force_obs.calc_magnification(model='fspl')
+        log.info( '-> calculated the magnification as a function of time' )
+        swift_event_force_obs.simulate_data_points(model='fspl', \
+                            phot_precision='swift', window=0.83, interval=1.6,\
+                            force_t0_obs=True,log=log)
+        log.info( '-> Simulated Swift model and data' )
+        
+        # Record information on the current grid point:
+        par_grid.write(str(grid_point[0])+' '+str(grid_point[1])+' '+\
+                    str(grid_point[3])+' '+str(grid_point[4])+' '+\
+                    str(grid_point[6])+' '+str(grid_point[5])+' '+\
+                    str(event.u_o)+' '+str(grid_point[2])+' '+\
+                    str(event.u_min)+' '+str(event.u_t.min())+' '+\
+                    str(swift_event.u_t.min())+' '+\
+                    str(swift_event_force_obs.u_t.min())+'\n')
+        par_grid.flush()
         
         # Output data lightcurves:
         file_path = path.join( params['output_path'], \
                         event.root_file_name()+'_earth.dat' )
         event.output_data( file_path )
         file_path = path.join( params['output_path'], \
-                        event.root_file_name()+'_swift.dat' )
+                    event.root_file_name()+'_swift.dat' )
         swift_event.output_data( file_path )
+        file_path = path.join( params['output_path'], \
+                    event.root_file_name()+'_swift_forced_obs.dat' )
+        swift_event_force_obs.output_data( file_path )
         
         # Output model lightcurves:
         file_path = path.join(params['output_path'], \
                         event.root_file_name()+'_earth.model' )
         event.output_model( file_path, model='fspl' )
         file_path = path.join( params['output_path'], \
-                        event.root_file_name()+'_swift.model' )
+                    event.root_file_name()+'_swift.model' )
         swift_event.output_model( file_path, model='fspl' )
+        file_path = path.join( params['output_path'], \
+                    event.root_file_name()+'_swift_forced_obs.model' )
+        swift_event_force_obs.output_model( file_path, model='fspl' )
         log.info( '-> Completed output' )
         
         #else:
         #    log.info( '-> u_o too large to be interesting, skipping' )
         
     log.info( 'Completed simulation' )
-    
+    par_grid.close()
     log_utilities.end_day_log( log )
     
 def construct_grid( params, log ):
@@ -187,6 +216,22 @@ def construct_grid( params, log ):
                                             repr(model_pars) + ', adding to list' )
     return grid
 
+def start_par_grid_log( params ):
+    par_grid = open( path.join(params['output_path'],'parameters_grid.data'), 'w')
+    par_grid.write('# Column 1: ML[MSol]\n')
+    par_grid.write('# Column 2: DL[pc]\n')
+    par_grid.write('# Column 3: tE[d]\n')
+    par_grid.write('# Column 4: phi[rads]\n')
+    par_grid.write('# Column 5: rho\n')
+    par_grid.write('# Column 6: Vbase[mag]\n')
+    par_grid.write('# Column 7: uo (Minimum measured from Earth)\n')
+    par_grid.write('# Column 8: uoffset\n')
+    par_grid.write('# Column 9: umin (Minimum separation from the Sun-source line)\n')
+    par_grid.write('# Column 10: umin(Minimum measured u(t) from the Earth)\n')
+    par_grid.write('# Column 11: umin(Minimum measured u(t) Swift, coincident obs timing)\n')
+    par_grid.write('# Column 12: umin(Minimum measured u(t) Swift, obs forced at peak)\n')
+    return par_grid
+    
 def check_for_output( params, model_pars ):
     """Function to check whether existing output is present for the given
     set of model parameters"""
@@ -252,14 +297,30 @@ def parse_input_file( file_path ):
 if __name__ == '__main__':
     
     fill_grid = False
+    gen_swift_only = False
+    force_t0_obs = False
     if len(argv) == 1:
         print """Call sequence:
-                python swift_grid_simulation.py [parameter_file] [-fill-grid]
+                python swift_grid_simulation.py [parameter_file] [-options]
+                
+                Options are:
+                -fill-grid
+                -gen-swift-only
+                -force-t0-obs
               """
     else:
         file_path = argv[1]
-        if len(argv) == 3:
-            fill_grid = True
+        if len(argv) > 2:
+            for arg in argv[2:]:
+                if 'fill-grid' in arg:
+                    fill_grid = True
+                elif 'gen-swift-only' in arg:
+                    gen_swift_only = True
+                elif 'force-t0-obs' in arg:
+                    force_t0_obs = True
+                
         params = parse_input_file( file_path )
         params['fill_grid'] = fill_grid
+        params['gen_swift_only'] = gen_swift_only
+        params['force_t0_obs'] = force_t0_obs
         simulate_grid_models( params )

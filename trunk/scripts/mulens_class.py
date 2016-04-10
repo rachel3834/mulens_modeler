@@ -4,6 +4,8 @@
 ##########################
 # IMPORTED MODULES
 from sys import exit
+from os import path
+from shutil import move
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy import constants, coordinates, units
@@ -58,9 +60,11 @@ class MicrolensingEvent():
         self.v_SL = None
         	
         # Arrays of the lens-source relative motion in the lens plane as 
-        # functions of time:
+        # functions of time, and at t0:
         self.x_lens = None
         self.y_lens = None
+        self.x_lens_o = None
+        self.y_lens_o = None
         	
         # Angle between the source's trajectory and ecliptic north. 
         # For the time being, assuming all motion to be in the plane
@@ -118,10 +122,14 @@ class MicrolensingEvent():
         self.y_earth = None
         self.earth_helio_position = []
         self.earth_helio_radius = None
+        self.earth_helio_radius_o = None
         	
-        # Projected position of the observer in the lens plane, units of R_E:
+        # Projected position of the observer in the lens plane, units of R_E, 
+        # as functions of time and at t0:
         self.x_obs = 0.0
         self.y_obs = 0.0
+        self.x_obs_o = 0.0
+        self.y_obs_o = 0.0
         	
         # Parameterization of Swift's orbit around Earth:
         # Radius of Swift's orbit from Earth centre (converting nautical 
@@ -163,7 +171,7 @@ class MicrolensingEvent():
             te = round( te, 1 )
             phi = round( self.phi, 3 )
             mag = round( self.mag_base, 1 )
-            uo = round( self.u_o, 6 )
+            uo = round( self.u_offset, 6 )
             ml = round( self.M_L.value/constants.M_sun.value, 6 )
             dl = round( self.D_L.value/constants.pc.value, 4 )
             rho = round( self.rho, 3 )
@@ -385,12 +393,21 @@ class MicrolensingEvent():
     	# Calculate the position of Earth from its known orbital elements for all timestamps
     	# in the event timeline. SLALIB does not handle np.arrays, only taking the first entry, 
     	# thus a loop is necessary here.  The result is then converted from units of AU -> m.
+        def calc_earth_helio_position(t):
+            ( ph, vh, pb, vb ) = slalib.sla_epv(ts-2400000.5)
+            r_orb_earth = np.sqrt( ( ph * ph ).sum() )
+            return ph,r_orb_earth
+            
         R_earth = []
         for ts in self.t:
-            ( ph, vh, pb, vb ) = slalib.sla_epv(ts-2400000.5)
+            (ph,r) = calc_earth_helio_position(ts)
             self.earth_helio_position.append(ph)
-            R_earth.append( np.sqrt( ( ph * ph ).sum() ) )
+            R_earth.append( r )
         self.earth_helio_radius = R_earth * constants.au
+        
+        (ph,r) = calc_earth_helio_position(self.t_o)
+        self.earth_helio_radius_o = r * constants.au
+        
     	#print self.earth_helio_radius
     
     def get_earth_perihelion( self ):
@@ -435,7 +452,8 @@ class MicrolensingEvent():
         # Earth, 1AU away from the Sun-source line:
         if parallax == False:
             r_obs = np.array( [ constants.au.value ] * len(self.t) )
-	
+            r_obs_o = constants.au.value
+            
         # Including Earth's true orbital motion:
         if parallax == True:
             # Calculate the Earth's radius from the Sun during the event:
@@ -446,22 +464,41 @@ class MicrolensingEvent():
             # Radius of the observer from the centre of the Sun, factoring 
             # in the orbit of the satellite if requested:
             r_obs = self.earth_helio_radius
-	
+            r_obs_o = self.earth_helio_radius_o
+            if debug==True:
+                print 'Earths orbital motion at t_o: ',r_obs_o
+                
         # Including the additional altitude of a satellite orbiting the Earth:
+        def radius_satellite(t, sat_orbit_radius, sat_omega, sat_t, robs):
+            r = robs + sat_orbit_radius + \
+                     ( sat_omega * ( t - sat_t ) )
+            return r
+            
         if satellite == True: 
-            r_obs = r_obs.value + self.swift_orbit_radius + \
-                     ( self.omega_swift * ( self.t - self.swift_t ) )
-	
+            #r_obs = r_obs.value + self.swift_orbit_radius + \
+            #         ( self.omega_swift * ( self.t - self.swift_t ) )
+            r_obs = radius_satellite(self.t, self.swift_orbit_radius, \
+                            self.omega_swift, self.swift_t, r_obs.value)
+            r_obs_o = radius_satellite(self.t_o, self.swift_orbit_radius, \
+                            self.omega_swift, self.swift_t, r_obs_o.value)
+            
         # Identify the time of closest approach of the observer to the 
         # Sun-source line:
         i = np.where( r_obs == r_obs.min() )
         self.t_c = self.t[i]
     	
         # Projecting this radius to the lens plane:
-        self.alpha = ( r_obs * ( 1.0 - ( self.D_L / self.D_S ) ) ) \
-                     / self.R_E
+        # self.alpha = ( r_obs * ( 1.0 - ( self.D_L / self.D_S ) ) ) \
+        #             / self.R_E
+        def calc_alpha(robs, DL, DS, RE):
+            alpha = ( robs/ RE ) * ( 1.0 - ( DL / DS ) ) 
+            return alpha
+            
+        self.alpha = calc_alpha(r_obs, self.D_L, self.D_S, self.R_E)
+        alpha_o = calc_alpha(r_obs_o, self.D_L, self.D_S, self.R_E)
         if debug == True:
-            print 'alpha = ',self.alpha.min()
+            print 'alpha = ',self.alpha.min(), alpha_o, r_obs_o, \
+            self.D_L, self.D_S, self.R_E
             
         # Calculate omega = Einstein crossing time as an angular frequency 
         # in units of days:
@@ -471,38 +508,84 @@ class MicrolensingEvent():
         self.omega_sq_dt_sq =  self.omega * self.omega * dt * dt
     	
         # Calculate Omega(t-tc) for all timestamps during the event:
+        def calc_big_omega(big_omega_o,dtc,earth_orbit_e, dtp):
+            big_omega = big_omega_o * dtc + 2.0 * \
+                 earth_orbit_e * np.sin( big_omega_o * dtp )
+            return big_omega
         dtc = self.t - self.t_c
         dtp = self.t - self.t_p
-        self.big_omega_dtc = self.big_omega_o * dtc + 2.0 * \
-                 earth_orbit_e * np.sin( self.big_omega_o * dtp )
+        #self.big_omega_dtc = self.big_omega_o * dtc + 2.0 * \
+        #         earth_orbit_e * np.sin( self.big_omega_o * dtp )
+        self.big_omega_dtc = calc_big_omega(self.big_omega_o,dtc, \
+                                        earth_orbit_e, dtp)
+        dtc_o = self.t_o - self.t_c
+        dtp_o = self.t_o - self.t_p
+        big_omega_dtc_o = calc_big_omega(self.big_omega_o,dtc_o, \
+                                        earth_orbit_e, dtp_o)
         if debug == True:
             print 'OMEGA: ',(self.big_omega_o* dtc), self.t_c,self.t, \
                 earth_orbit_e, np.sin( self.big_omega_o * dtp ), \
-                self.big_omega_dtc
+                self.big_omega_dtc, big_omega_dtc_o
                 
         # Factoring in the ecliptic latitude, beta, to arrive at the 
         # projected observer location in the lens plane as a function 
         # of time during the event:
+        # self.x_obs = self.alpha.value * np.sin(self.beta) * \
+        #             np.cos(self.big_omega_dtc)
+        # self.y_obs = self.alpha.value * np.cos(self.beta) * \
+        #             np.sin(self.big_omega_dtc)
+        # self.r_obs = np.sqrt( ( self.x_obs*self.x_obs ) + \
+        #            ( self.y_obs*self.y_obs ) )
         self.calc_beta()
-        self.x_obs = self.alpha.value * np.sin(self.beta) * \
-                     np.cos(self.big_omega_dtc)
-        self.y_obs = self.alpha.value * np.cos(self.beta) * \
-                     np.sin(self.big_omega_dtc)
-        self.r_obs = np.sqrt( ( self.x_obs*self.x_obs ) + \
-                    ( self.y_obs*self.y_obs ) )
-        imid = int(len(self.t)/2.0)
+        def calc_obs_position(alpha, beta, big_omega_dtc):
+            x_obs = alpha * np.sin(beta) * \
+                     np.cos(big_omega_dtc)
+            y_obs = alpha * np.cos(beta) * \
+                     np.sin(big_omega_dtc)
+            r_obs = np.sqrt( ( x_obs*x_obs ) + ( y_obs*y_obs ) )
+            return x_obs,y_obs,r_obs
+            
+        (self.x_obs, self.y_obs, self.r_obs) = \
+            calc_obs_position(self.alpha.value, self.beta, self.big_omega_dtc)
+            
+        (self.x_obs_o, self.y_obs_o, r_obs_o) = \
+            calc_obs_position(alpha_o.value, self.beta, big_omega_dtc_o)
+           
+        idx = np.where( abs(self.t-self.t_o) == abs(self.t-self.t_o).min() )
+        self.x_obs_o = self.x_obs[idx]
+        self.y_obs_o = self.y_obs[idx]
+        self.it_o = idx
+        
+        if debug == True:
+            print 'Obs positions: ',self.x_obs,self.y_obs
+            print 'Obs position at t0: ',self.x_obs_o, self.y_obs_o, r_obs_o
+            imid = int(float(len(self.t))/2.0)
+            print 'Obs position in middle of lightcurve: ', \
+                    self.x_obs[imid],self.y_obs[imid]
+        
+        # Normalizing the observer's position so that the lens position
+        # closest approach is to the observer, offset to the current
+        # uoffset value:
         if debug == True:        
             print 'X: ',self.alpha.value, (np.sin(self.beta)), \
-                (np.cos(self.big_omega_dtc)), self.x_obs, self.x_obs[imid]
+                (np.cos(self.big_omega_dtc)), self.x_obs
             print 'Y: ',self.alpha.value, (np.cos(self.beta)), \
-                (np.sin(self.big_omega_dtc)), self.y_obs, self.y_obs[imid]
+                (np.sin(self.big_omega_dtc)), self.y_obs
         
-        self.x_obs = self.x_obs - self.x_obs[imid] + ( np.sqrt(2.0) * self.u_offset )
-        self.y_obs = self.y_obs - self.y_obs[imid] + ( np.sqrt(2.0) * self.u_offset )
-        if debug == True:        
-            print 'Normalized obs position: ',self.x_obs, self.y_obs, \
-                    self.u_offset
+        #self.x_obs = self.x_obs - self.x_obs_o[0] + ( self.u_offset / np.sqrt(2.0) )
+        #self.x_obs = self.x_obs - self.x_obs_o[0]
+        #self.y_obs = self.y_obs - self.y_obs_o[0]
+        #self.x_obs_o = self.x_obs_o[0] - self.x_obs_o[0]
+        #self.x_obs_o = self.y_obs_o[0] - self.y_obs_o[0]
         
+        if debug == True:
+            print 'Obs position at t0: ',self.x_obs_o, self.y_obs_o, r_obs_o
+            print 'Obs position at middle of x, y position arrays: ',\
+                    self.x_obs[imid],self.y_obs[imid]
+            idx = np.where( abs(self.t-self.t_o) == abs(self.t-self.t_o).min() )
+            print 'Minimum in t-to at : ',idx, self.t[idx],self.t_o, \
+                    self.x_obs[idx], self.y_obs[idx], (self.t-self.t_o)[idx]
+            
     ###############################
     # POINT-SOURCE, POINT-LENS
     
@@ -533,27 +616,50 @@ class MicrolensingEvent():
         #         ( self.u_min * np.cos(self.phi) )
         #self.r_lens = np.sqrt(self.x_lens*self.x_lens + \
         #         self.y_lens*self.y_lens)
-                 
-        self.x_lens = ( -1.0 * self.u_min * np.sin(self.phi) ) + \
-                        ( self.v_SL_dx * ( self.t - self.t_o ) )
-        self.y_lens = ( self.u_min * np.cos(self.phi) ) + \
-                        ( self.v_SL_dy * (self.t - self.t_o ) )
-        self.r_lens = np.sqrt(self.x_lens*self.x_lens + \
-                 self.y_lens*self.y_lens)
+        def calc_lens_position(u_min, phi,v_SL_dx,v_SL_dy,t,t_o):
+            x_lens = ( -1.0 * u_min * np.sin(phi) ) + \
+                        ( v_SL_dx * ( t - t_o ) )
+            y_lens = ( u_min * np.cos(phi) ) + \
+                        ( v_SL_dy * (t - t_o ) )
+            r_lens = np.sqrt(x_lens*x_lens + y_lens*y_lens)
+            return x_lens,y_lens,r_lens
+            
+        (self.x_lens,self.y_lens,self.r_lens) = calc_lens_position(self.u_min, \
+                        self.phi,self.v_SL_dx,self.v_SL_dy,self.t,self.t_o)
+                
+        (self.x_lens_o,self.y_lens_o,r_lens_o) = calc_lens_position(self.u_min, \
+                        self.phi,self.v_SL_dx,self.v_SL_dy,self.t_o,self.t_o)
+        
         if debug == True:
             print 'X_Lens: ',self.x_lens
             print 'Y_Lens: ',self.y_lens
+            print 'X,Y Lens at t0: ',self.x_lens_o, self.y_lens_o
+            
         
     ################################
     # EVENT TIMELINE
-    def gen_event_timeline(self,cadence=None,lc_length=None, debug=False):
+    def gen_event_timeline(self,cadence=None,lc_length=None, \
+                            force_t0_obs=False, debug=False):
         """Method to generate the event timeline, an array of timestamps 
         for datapoints on the event lightcurve, 
         spanning the range t_o +/- (t_E/2).
         Optional argument:
             cadence float [mins]
         """
- 
+        
+        # Generate an array of incremental timestamps throughout the event 
+        # in JD:
+        def gen_timestamps(t_start, t_end, t_incr, target_position, debug):
+            ts = []
+            jd = []
+            t = t_start
+            while t <= t_end:
+                t = t + t_incr
+                jd.append( t.jd )
+                hjd = self.jd_to_hjd(t, target_position, debug=debug)
+                ts.append(hjd)
+            return ts, jd
+            
         # Compute the start and end times of the event, note these are in 
         # UTC format:
         # Plots extend to +/- 2 * t_E by default, or this can be fixed
@@ -563,32 +669,44 @@ class MicrolensingEvent():
             half_lc = TimeDelta( ( (lc_length*60.0*60.0*24.0) / 2.0 ), 
                                         format='sec' )
         
-        # Store the Time version of t_o in JD for future reference:
-        if self.t_o_jd == None:
-            self.t_o_jd = self.t_o
-        event_start = self.t_o_jd - half_lc
-        event_end = self.t_o_jd + half_lc
-            
-        if cadence == None:
-            t_incr = TimeDelta( ( self.t_E.value / 5000.0 ) , format='sec')
-        else:
-            t_incr = TimeDelta( ( cadence * 60.0 ), format='sec')
-    	
         # Convert coordinates for future use:
         (ra_rads, dec_rads) = utilities.sex2rads(self.RA, self.Dec)
         target_position = slalib.sla_dcs2c( ra_rads, dec_rads )
         
-        # Generate an array of incremental timestamps throughout the event 
-        # in JD:
-        ts = []
-        jd = []
-        t = event_start
-        while t <= event_end:
-            t = t + t_incr
-            jd.append( t.jd )
-            hjd = self.jd_to_hjd(t, target_position, debug=debug)
-            ts.append(hjd)
+        if cadence == None:
+            t_incr = TimeDelta( ( self.t_E.value / 5000.0 ) , format='sec')
+        else:
+            t_incr = TimeDelta( ( cadence * 60.0 ), format='sec')
+            
+        # Store the Time version of t_o in JD for future reference:
+        if self.t_o_jd == None:
+            self.t_o_jd = self.t_o
         
+        if force_t0_obs == False:
+            event_start = self.t_o_jd - half_lc
+            event_end = self.t_o_jd + half_lc
+                
+            # Generate an array of incremental timestamps throughout the event 
+            # in JD:
+            (ts, jd) = gen_timestamps(event_start, event_end, t_incr, \
+                            target_position, debug)
+
+        else:
+            
+            # Build the lightcurve in two halves, centered at t0:
+            event_start = self.t_o_jd
+            event_end = self.t_o_jd + half_lc
+            
+            (ts1, jd1) = gen_timestamps(event_start, event_end, t_incr, \
+                            target_position, debug)
+            event_start = self.t_o_jd - half_lc
+            event_end = self.t_o_jd
+            
+            (ts2, jd2) = gen_timestamps(event_start, event_end, t_incr, \
+                            target_position, debug)
+            ts = ts1 + ts2
+            jd = jd1 + jd2
+            
         self.t = np.array(ts)
         self.ts_jd = np.array(jd)
         #print 'TO (JD) = ',self.t_o.jd
@@ -715,10 +833,23 @@ class MicrolensingEvent():
                        ( np.cos(self.big_omega_dtc) )**2
         
         else:
-            dx = self.x_lens - self.x_obs
-            dy = self.y_lens - self.y_obs
+            
+            # Offset the trajectory of the lens so that it passes
+            # close to the position of the source at t0. 
+            (x_lens, y_lens) = self.offset_lens()
+            
+            dx = x_lens - self.x_obs
+            dy = y_lens - self.y_obs
             usq_t = dx*dx + dy*dy
-        
+            
+            if dbg == True:
+                idx = self.it_o
+                print 'LENS at t[idx]: ',self.x_lens[self.it_o], self.y_lens[self.it_o]
+                print 'OBS at t[idx]: ',self.x_obs[self.it_o], self.y_obs[self.it_o]
+                print 'Delta pos: ',dx[idx],dy[idx]
+                u = np.sqrt( dx[idx]*dx[idx] + dy[idx]*dy[idx] )
+                print 'u [idx]: ',u
+            
     	#dx = self.x_lens - self.x_obs
     	#dy = self.y_lens - self.y_obs
     	
@@ -726,12 +857,18 @@ class MicrolensingEvent():
     	
     	#print usq_t
     	
-        self.u_t = np.sqrt(usq_t) 
+        self.u_t = np.sqrt(usq_t)
         if set_uo == True:
             self.u_o = self.u_t.min()
         
         #print 'u(t) min: ',self.u_t.min()
 
+    def offset_lens(self):
+        uoffset = self.u_offset / np.sqrt(2.0)
+        x_lens = self.x_lens + self.x_obs_o + uoffset
+        y_lens = self.y_lens + self.y_obs_o + uoffset
+        return x_lens, y_lens
+        
     ##################################
     # OBSERVATION SIMULATION
     def calc_mag( self, model='pspl' ):
@@ -754,15 +891,93 @@ class MicrolensingEvent():
         mag = self.mag_base - 2.5 * np.log10( A_t )
         return mag
 
+    def data_within_interval(self,obs_start,obs_end,A_t,exp_time,phot_precision):
+        
+        idx1 = np.where( self.t >= obs_start )
+        idx2 = np.where( self.t <= obs_end )
+        idx = np.intersect1d(idx1,idx2)
+        
+        ts = self.t[idx].tolist()
+        mag = []
+        merr = []
+        for i in idx:
+            mag_mean = self.mag_base - 2.5 * np.log10( A_t[i] ) 
+            merr_est = self.sim_mag_error( exp_time, mag_mean, phot_precision ) 
+            mag.append( np.random.normal( mag_mean, merr_est ) )
+            merr.append( self.sim_mag_error( exp_time, mag[-1], phot_precision ) )
+        
+        return ts,mag,merr
+
+    def select_data_at_intervals(self,A_t,obs_start,obs_end,\
+                            interval, window, exp_time, phot_precision, \
+                            force_t0_obs=False):
+        """Method to select datapoints from the existing model at intervals 
+        according to the observational parameters"""
+        ts = []
+        mag = []
+        merr = []
+        first_group = True
+        
+        def test_continue(interval, obs_start, obs_end, interval_start):
+            if interval < 0:
+                if interval_start > obs_start:
+                    return True
+                else:
+                    return False
+            
+            else:
+                if interval_start < obs_end:
+                    return True
+                else:
+                    return False
+                
+        
+        # If forcing observations around t0, one interval is split over t0, 
+        # so the first group is a half-group:
+        if force_t0_obs == True:
+            if interval > 0:
+                interval_start = obs_start
+                interval_end = obs_start + (window/2.0)
+            else:
+                interval_start = obs_end - (window/2.0)
+                interval_end = obs_end
+            (t,m,me) = self.data_within_interval(interval_start,interval_end,\
+                                        A_t,exp_time,phot_precision)
+                                            
+            ts = ts + t
+            mag = mag + m
+            merr = merr + me
+            
+            interval_start = interval_start + interval
+            interval_end = interval_start + window
+        else:
+            interval_start = obs_start
+            interval_end = interval_start + window
+            
+        cont = test_continue(interval, obs_start, obs_end, interval_start)
+        while cont == True:
+            (t,m,me) = self.data_within_interval(interval_start,interval_end,A_t,\
+                                exp_time, phot_precision)
+            ts = ts + t
+            mag = mag + m
+            merr = merr + me
+            interval_start = interval_start + interval
+            interval_end = interval_start + window
+            cont = test_continue(interval, obs_start, obs_end, interval_start)
+            
+        return ts, mag, merr
+
     def simulate_data_points(self,model='pspl', phot_precision='1m', \
-            window=None, interval=None):
+            window=None, interval=None,force_t0_obs=False,log=None):
         """Method to extract a series of datapoints from the current model
         with a given photometric cadence and precision."""
-        
+
         # Exposure time set to 200s for consistency, observing cadence
         # expected to be 220s:
         exp_time = 200.0
-        
+        if log != None:
+            log.info('Simulating data points with window='+str(window)+\
+                    ' and interval='+str(interval))
         if model == 'pspl': 
             A_t = self.A_t_pspl
         if model == 'fspl': 
@@ -776,30 +991,38 @@ class MicrolensingEvent():
             window = window / 24.0
             interval = interval / 24.0
         
-        n_data = len( self.t ) - 1
-        obs_start = self.t[0]
-        if window != None:
-            obs_end = obs_start + window
-        else:
+        # Continuous sampling:
+        if window == None:
+            obs_start = self.t[0]
             obs_end = self.t[-1]
-                    
-        ts = []
-        mag = []
-        merr = []
-        for i in range( 0, n_data, 1 ):
-            t = self.t[i]
-            if t >= obs_start and t <= obs_end:
-                ts.append( t )
-                mag_mean = self.mag_base - 2.5 * np.log10( A_t[i] ) 
-                merr_est = self.sim_mag_error( exp_time, mag_mean, phot_precision ) 
-                mag.append( np.random.normal( mag_mean, merr_est ) )
-                merr.append( self.sim_mag_error( exp_time, mag[-1], phot_precision ) )
+            (ts,mag,merr) = self.data_within_interval(obs_start,obs_end,A_t,\
+                                exp_time, phot_precision)
+                                
+        # Observations at periodic intervals:
+        else:
+            if force_t0_obs == False:
+                obs_start = self.t[0]
+                obs_end = self.t[-1]
+                (ts, mag, merr) = self.select_data_at_intervals(A_t,obs_start,\
+                                obs_end,interval, window, exp_time, phot_precision,\
+                                force_t0_obs=force_t0_obs)
+            else:
+                obs_start = self.t[0]
+                obs_end = self.t_o
+                (t1, m1, me1) = self.select_data_at_intervals(A_t,obs_start,\
+                                obs_end,-1.0*interval, window, exp_time, phot_precision,\
+                                force_t0_obs=force_t0_obs)
                 
-            if t >= obs_end:
-                if window != None:
-                    obs_start = obs_end + interval
-                    obs_end = obs_start + window
-        
+                obs_start = self.t_o
+                obs_end = self.t[-1]
+                (t2, m2, me2) = self.select_data_at_intervals(A_t,obs_start,\
+                                obs_end,interval, window, exp_time, phot_precision,\
+                                force_t0_obs=force_t0_obs)
+                ts = t1 + t2
+                mag = m1 + m2
+                merr = me1 + me2
+                print len(t1), len(t2), len(ts), interval
+            
         self.ts = np.array( ts )
         self.mag = np.array( mag )
         self.merr = np.array( merr )
@@ -885,6 +1108,10 @@ class MicrolensingEvent():
     def output_data( self, file_name ):
         """Function to output a lightcurve file containing the data
         from the current model"""
+
+        if path.isfile( file_name ) == True:
+            bkup = file_name.replace('.dat', '_old.dat')
+            move(file_name, bkup)
         
         te = self.t_E / ( 24.0 * 60.0 * 60.0 )
         fileobj = open( file_name, 'w' )
@@ -931,7 +1158,7 @@ class MicrolensingEvent():
         
     ##################################
     # PLOT LENS PLANE MOTION
-    def plot_lens_plane_motion(self):
+    def plot_lens_plane_motion(self,params=None):
         """Method to plot the motion of the lens as a function of time in 
         the lens plane geometry"""
 	
@@ -943,39 +1170,84 @@ class MicrolensingEvent():
             return xcir, ycir
     	
         # Set up figure:				   
-        fig = plt.figure(2,(10,12)) 
-        ax = fig.add_axes([0.1, 0.3, 0.85, 0.65])   #  [left, bottom, width, height]
+        fig = plt.figure(2,(16,10)) 
+        ax = fig.add_axes([0.1, 0.45, 0.4, 0.4])   #  [left, bottom, width, height]
 	
     	  # Plot the trajectory of the lens relative to the Sun-source 
         # line during the event:
-        plt.plot(self.x_lens,self.y_lens,'r-')
+        (x_lens,y_lens) = self.offset_lens()
+        plt.plot(x_lens,y_lens,'r-')
+        plt.plot(self.x_lens_o,self.y_lens_o,'r.')
 	
          # Plot the trajectory of the observer in the lens plane during 
         # the event:
         plt.plot(self.x_obs,self.y_obs,'b-')
+        plt.plot(self.x_obs_o,self.y_obs_o,'b.')
         
         plt.xlabel('x [R$_{E}$]', fontsize=18)
         plt.ylabel('y [R$_{E}$]', fontsize=18)
         (x_E, y_E) = circle(1.0)      # Plot in units of the Einstein radius
-        plt.plot(x_E,y_E,'k-.')
-        plt.axis([-2.0,2.0,-2.0,2.0])
+        plt.plot(x_E+self.x_obs_o,y_E+self.y_obs_o,'k-.')
+        #plt.axis([-2.0,2.0,-2.0,2.0])
         plt.box('off')
         plt.grid(True)
         plt.axhline(y=0, color='black')
         plt.axvline(x=0, color='black')
     
+        # Plot a zoom-in of the trajectory of the lens relative to the Sun-source 
+        # line during the event:
+        ax = fig.add_axes([0.55, 0.45, 0.4, 0.4])   #  [left, bottom, width, height]
+        plt.plot(x_lens,y_lens,'r-')
+        plt.plot(self.x_lens_o,self.y_lens_o,'r.')
+	
+         # Plot the trajectory of the observer in the lens plane during 
+        # the event:
+        plt.plot(self.x_obs,self.y_obs,'b.')
+        plt.plot(self.x_obs_o,self.y_obs_o,'b.')
+        
+        plt.xlabel('x [R$_{E}$]', fontsize=18)
+        plt.ylabel('y [R$_{E}$]', fontsize=18)
+        (x_E, y_E) = circle(1.0)      # Plot in units of the Einstein radius
+        plt.plot(x_E+self.x_obs_o,y_E+self.y_obs_o,'k-.')
+        xmin = self.x_obs_o - 2.0
+        xmax = self.x_obs_o + 2.0
+        ymin = self.y_obs_o - 2.0
+        ymax = self.y_obs_o + 2.0
+        plt.axis([xmin,xmax,ymin,ymax])
+        plt.box('off')
+        plt.grid(True)
+        plt.axhline(y=0, color='black')
+        plt.axvline(x=0, color='black')
+    
+    
         # Plot lens and observer separation as functions of time:
-        ax = fig.add_axes([0.1, 0.05, 0.85, 0.2])   #  [left, bottom, width, height]
-        plt.plot(self.t-2450000.0,(self.y_lens),'r-')
-        plt.plot(self.t-2450000.0,(self.y_obs),'b-')
+        ax = fig.add_axes([0.1, 0.1, 0.3, 0.2])   #  [left, bottom, width, height]
+        plt.plot(self.t-2450000.0,(x_lens),'r-')
+        plt.plot(self.t-2450000.0,(self.x_obs),'b-')
+        (xmin,xmax,ymin,ymax) = plt.axis()
         plt.plot(np.array( [self.t_o-2450000.0]*2 ), \
-                         np.array([-2.0,2.0]),'r-.')
+                         np.array([ymin,ymax]),'r-.')
+        plt.xlabel('HJD-2450000.0', fontsize=18) 				     
+        plt.ylabel('x$_{lens}$ [R$_{E}$]', fontsize=18) 
+        ax.yaxis.grid() #vertical lines
+        ax.xaxis.grid() #horizontal lines		    
+        
+        ax = fig.add_axes([0.55, 0.1, 0.3, 0.2])   #  [left, bottom, width, height]
+        plt.plot(self.t-2450000.0,(y_lens),'r-')
+        plt.plot(self.t-2450000.0,(self.y_obs),'b-')
+        (xmin,xmax,ymin,ymax) = plt.axis()
+        plt.plot(np.array( [self.t_o-2450000.0]*2 ), \
+                         np.array([ymin,ymax]),'r-.')
         plt.xlabel('HJD-2450000.0', fontsize=18) 				     
         plt.ylabel('y$_{lens}$ [R$_{E}$]', fontsize=18) 
         ax.yaxis.grid() #vertical lines
         ax.xaxis.grid() #horizontal lines		    
-    
-        plt.savefig('lens_plane_motion.png')
+        
+        if params != None:
+            plot_file = path.join( params['output_path'], 'lens_plane_motion.png')
+        else:
+            plot_file = 'lens_plane_motion.png'
+        plt.savefig(plot_file)
         plt.close(2)
 
     def plot_lightcurve(self, plot_file, model_list=['pspl']):
