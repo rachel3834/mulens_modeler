@@ -59,7 +59,7 @@ def simulate_grid_models( params ):
         event.D_S = constants.pc * params['source_distance']
         event.RA = '17:57:34.0'
         event.Dec = '-29:13:15.0'
-        event.t_o = Time('2015-06-15T16:00:00', format='isot', scale='utc')
+        event.t_o = Time('2015-06-15T15:00:00', format='isot', scale='utc')
         event.get_earth_perihelion()
         
         log.info( 'Computing for grid point parameters (' + str(g+1) + \
