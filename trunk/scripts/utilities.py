@@ -6,6 +6,7 @@ Created on Thu Mar  3 23:52:35 2016
 """
 
 from numpy import pi
+from astropy.time import Time, TimeDelta
 
 #####################
 # SEX2DECDEG
@@ -66,3 +67,4 @@ def sexig2dec(CoordStr):
     
     # Return with the decimal float:
     return Decimal
+    
