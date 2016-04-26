@@ -80,7 +80,7 @@ def grid_locale_stats( grid_dir ):
         gp = GridPoint()
         gp.set_par_from_file( earth_lc_file )
         
-        swift_lc_file = str(earth_lc_file).replace('earth','swift_new')
+        swift_lc_file = str(earth_lc_file).replace('earth','swift')
         
         earth_data = read_lc_file( earth_lc_file )
         swift_data = read_lc_file( swift_lc_file )
